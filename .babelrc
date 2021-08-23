@@ -1,0 +1,18 @@
+{
+    "presets": [
+        "@babel/preset-react",
+        "@babel/preset-env"
+    ],
+    "plugins": [
+        // babel 6 不支持 module.exports 写法，所以需要使用此插件
+        "add-module-exports",
+
+        ["@babel/plugin-proposal-decorators", { "legacy": true }],
+        ["@babel/plugin-proposal-class-properties", { "loose": true }],
+
+        // 以避免编译输出中的重复
+        "@babel/plugin-transform-runtime",
+        // import()  语法
+        "@babel/plugin-syntax-dynamic-import"
+    ]
+}

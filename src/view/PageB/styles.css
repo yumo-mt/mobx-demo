@@ -1,0 +1,24 @@
+.boxA {
+    height: 500px;
+    width: 500px;
+    background: lightblue;
+    position: relative;
+}
+
+.boxB {
+    height: 400px;
+    width: 400px;
+    background: lightcoral;
+    right: 0;
+    bottom: 0;
+    position: absolute;
+}
+
+.boxC {
+    height: 300px;
+    width: 300px;
+    background: lightgray;
+    right: 0;
+    bottom: 0;
+    position: absolute;
+}

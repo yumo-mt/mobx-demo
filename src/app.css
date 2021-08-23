@@ -1,0 +1,17 @@
+.navUl li {
+    display: block;
+    float: left;
+    height: 30px;
+    width: 70px;
+    margin-right: 30px;
+    background: lightblue;
+    list-style-type: none;
+}
+
+.navUl {
+    display: block;
+}
+
+nav {
+    height: 50px
+}
