@@ -13,7 +13,7 @@
  * - core/    Implementation of the MobX algorithm; atoms, derivations, reactions, dependency trees, optimizations. Cool stuff can be found here.
  * - types/   All the magic that is need to have observable objects, arrays and values is in this folder. Including the modifiers like `asFlat`.
  * - utils/   Utility stuff.
- *
+ *   version: 5.15.0
  */
 import { getGlobal, spy, getDebugName, $mobx } from "./internal";
 if (typeof Proxy === "undefined" || typeof Symbol === "undefined") {
