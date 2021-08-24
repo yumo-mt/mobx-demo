@@ -43,6 +43,7 @@ export class ObservableValue extends Atom {
                 type: "update",
                 newValue
             });
+            // 如果返回null，则本次没有变更
             if (!change)
                 return globalState.UNCHANGED;
             newValue = change.newValue;

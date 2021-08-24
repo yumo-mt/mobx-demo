@@ -37,17 +37,21 @@ function getEnhancerFromOptions(options) {
 }
 /**
  * Turns an object, array or function into a reactive structure.
+ * 将对象、数组或函数转换为反应式结构。本身不提供转换功能
  * @param v the value which should become observable.
+ * 
+ * 策略设计模式：将多种数据类型（Object、Array、Map）情况的转换封装起来，好让调用者不需要关心实现细节
+ * 
  */
 function createObservable(v, arg2, arg3) {
     // @observable someProp;
     if (typeof arguments[1] === "string" || typeof arguments[1] === "symbol") {
         return deepDecorator.apply(null, arguments);
     }
-    // it is an observable already, done
+    // 已经是一个observable对象了，直接返回
     if (isObservable(v))
         return v;
-    // something that can be converted and mutated?
+    // 根据类型 转给对应的方法处理
     const res = isPlainObject(v)
         ? observable.object(v, arg2, arg3)
         : Array.isArray(v)
@@ -57,7 +61,7 @@ function createObservable(v, arg2, arg3) {
                 : isES6Set(v)
                     ? observable.set(v, arg2)
                     : v;
-    // this value could be converted to a new observable data structure, return it
+    // this value could be converted to a new observable data structure, return it 这个值可以转换为一个新的可观察数据结构，返回它
     if (res !== v)
         return res;
     // otherwise, just box it
@@ -68,6 +72,7 @@ const observableFactories = {
     box(value, options) {
         if (arguments.length > 2)
             incorrectlyUsedAsDecorator("box");
+            // 仅仅是格式化入参 options 对象而已
         const o = asCreateObservableOptions(options);
         return new ObservableValue(value, getEnhancerFromOptions(o), o.name, true, o.equals);
     },

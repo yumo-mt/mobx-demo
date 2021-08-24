@@ -6,6 +6,7 @@ export function extendObservable(target, properties, decorators, options) {
         invariant(typeof target === "object", "'extendObservable' expects an object as first argument");
         invariant(!isObservableMap(target), "'extendObservable' should not be used on maps, use map.merge instead");
     }
+    // 第一步 调用 asObservableObject 方法给 target 添加 $mobx 属性
     options = asCreateObservableOptions(options);
     const defaultDecorator = getDefaultDecoratorFromObjectOptions(options);
     initializeInstance(target); // Fixes #1740
@@ -28,6 +29,7 @@ export function extendObservableObjectWithProperties(target, properties, decorat
             }
         }
     }
+     // 第二步 循环遍历，将属性经过 decorator(装饰器) 改造后添加到 target 上
     startBatch();
     try {
         const keys = getPlainObjectKeys(properties);
