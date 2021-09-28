@@ -1,8 +1,8 @@
-import { observable, action,configure } from '../../mobx-source/mobx';
+import { observable } from '../../mobx-source/mobx';
 
-configure({
-    useProxies: "never"
-})
+// configure({
+//     useProxies: "never"
+// })
 
 
 // var user = {
@@ -16,11 +16,11 @@ configure({
 // console.log(bankUser2);
 
 
-var pr1 = observable.box(2);
-console.log(pr1);
-console.log('--------华丽分割-----------')
-var pr2 = observable('ddd');
-console.log(pr2);
+// var pr1 = observable.box(2);
+// console.log(pr1);
+// console.log('--------华丽分割-----------')
+// var pr2 = observable('ddd');
+// console.log(pr2);
 
 
 
@@ -31,13 +31,15 @@ console.log(pr2);
 // export default new Store();
 
 var parent = {
-  child: {
+  inProp: {
     name: 'tony',
     age: 15
   },
-  name: 'john'
+  job: '钢铁侠'
 }
-
+debugger
 var bankUser = observable(parent);
 
+console.log(bankUser)
+console.log(bankUser.Symbol)
 export default bankUser;

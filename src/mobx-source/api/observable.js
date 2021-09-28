@@ -24,10 +24,13 @@ export function asCreateObservableOptions(thing) {
     }
     return thing;
 }
-export const deepDecorator = createDecoratorForEnhancer(deepEnhancer);
+// 基于 enhancer 创建装饰器
+export const deepDecorator = createDecoratorForEnhancer(deepEnhancer); // 默认的装饰器
 const shallowDecorator = createDecoratorForEnhancer(shallowEnhancer);
 export const refDecorator = createDecoratorForEnhancer(referenceEnhancer);
 const refStructDecorator = createDecoratorForEnhancer(refStructEnhancer);
+
+
 function getEnhancerFromOptions(options) {
     return options.defaultDecorator
         ? options.defaultDecorator.enhancer
@@ -52,15 +55,40 @@ function createObservable(v, arg2, arg3) {
     if (isObservable(v))
         return v;
     // 根据类型 转给对应的方法处理
-    const res = isPlainObject(v)
-        ? observable.object(v, arg2, arg3)
-        : Array.isArray(v)
-            ? observable.array(v, arg2)
-            : isES6Map(v)
-                ? observable.map(v, arg2)
-                : isES6Set(v)
-                    ? observable.set(v, arg2)
-                    : v;
+    // const res = isPlainObject(v)
+    //     ? observable.object(v, arg2, arg3)
+    //     : Array.isArray(v)
+    //         ? observable.array(v, arg2)
+    //         : isES6Map(v)
+    //             ? observable.map(v, arg2)
+    //             : isES6Set(v)
+    //                 ? observable.set(v, arg2)
+    //                 : v;
+
+    let res;
+    if(isPlainObject(v)){
+        res = observable.object(v, arg2, arg3)
+    }else if(Array.isArray(v)){
+        res = observable.array(v, arg2)
+    }else if(isES6Map(v)){
+        res = observable.map(v, arg2)
+    }else if(isES6Set(v)){
+        res = observable.set(v, arg2)
+    }else{
+        res = v
+    }
+    // isPlainObject(v)
+    //     ? observable.object(v, arg2, arg3)
+    //     : Array.isArray(v)
+    //         ? observable.array(v, arg2)
+    //         : isES6Map(v)
+    //             ? observable.map(v, arg2)
+    //             : isES6Set(v)
+    //                 ? observable.set(v, arg2)
+    //                 : v;
+
+
+
     // this value could be converted to a new observable data structure, return it 这个值可以转换为一个新的可观察数据结构，返回它
     if (res !== v)
         return res;
@@ -103,8 +131,13 @@ const observableFactories = {
         }
         else {
             const defaultDecorator = getDefaultDecoratorFromObjectOptions(o);
+            console.log(defaultDecorator)
+            // 传一个空对象，进行新产物属性的初始化
             const base = extendObservable({}, undefined, undefined, o);
+            console.log(base)
+            // 创建动态的可观察对象
             const proxy = createDynamicObservableObject(base);
+            console.log(proxy)
             extendObservableObjectWithProperties(proxy, props, decorators, defaultDecorator);
             return proxy;
         }
@@ -117,6 +150,8 @@ const observableFactories = {
 export const observable = createObservable;
 // weird trick to keep our typings nicely with our funcs, and still extend the observable function
 Object.keys(observableFactories).forEach(name => (observable[name] = observableFactories[name]));
+
+
 function incorrectlyUsedAsDecorator(methodName) {
     fail(
     // process.env.NODE_ENV !== "production" &&

@@ -76,7 +76,7 @@ module.exports = {
     // }),
     new HtmlWebpackPlugin({
       // 如果配置此项 需要在HTML模板中的title标签中增加   <%= htmlWebpackPlugin.options.title %>
-      title: "Webpack4",
+      title: "Mobx",
       hash: true, //防止缓存
       template: "./src/www/index.html",
       filename: "index.html",

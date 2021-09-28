@@ -1,6 +1,6 @@
 import { asObservableObject, createPropDecorator, fail, invariant, stringifyKey } from "../internal";
 export function createDecoratorForEnhancer(enhancer) {
-    invariant(enhancer);
+    // invariant(enhancer);
     const decorator = createPropDecorator(true, (target, propertyName, descriptor, _decoratorTarget, decoratorArgs) => {
         if (process.env.NODE_ENV !== "production") {
             invariant(!descriptor || !descriptor.get, `@observable cannot be used on getter (property "${stringifyKey(propertyName)}"), use @computed instead.`);
@@ -12,6 +12,7 @@ export function createDecoratorForEnhancer(enhancer) {
             : undefined;
         asObservableObject(target).addObservableProp(propertyName, initialValue, enhancer);
     });
+    debugger
     const res = 
     // Extra process checks, as this happens during module initialization
     typeof process !== "undefined" && process.env && process.env.NODE_ENV !== "production"

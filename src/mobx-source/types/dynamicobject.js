@@ -9,6 +9,7 @@ function isPropertyKey(val) {
 // and skip either the internal values map, or the base object with its property descriptors!
 const objectProxyTraps = {
     has(target, name) {
+        debugger
         if (name === $mobx || name === "constructor" || name === mobxDidRunLazyInitializersSymbol)
             return true;
         const adm = getAdm(target);
@@ -20,6 +21,8 @@ const objectProxyTraps = {
         return name in target;
     },
     get(target, name) {
+        debugger
+
         if (name === $mobx || name === "constructor" || name === mobxDidRunLazyInitializersSymbol)
             return target[name];
         const adm = getAdm(target);
@@ -41,12 +44,14 @@ const objectProxyTraps = {
         return target[name];
     },
     set(target, name, value) {
+        debugger
         if (!isPropertyKey(name))
             return false;
         set(target, name, value);
         return true;
     },
     deleteProperty(target, name) {
+        debugger
         if (!isPropertyKey(name))
             return false;
         const adm = getAdm(target);
@@ -54,11 +59,13 @@ const objectProxyTraps = {
         return true;
     },
     ownKeys(target) {
+        debugger
         const adm = getAdm(target);
         adm.keysAtom.reportObserved();
         return Reflect.ownKeys(target);
     },
     preventExtensions(target) {
+        debugger
         fail(`Dynamic observable objects cannot be frozen`);
         return false;
     }

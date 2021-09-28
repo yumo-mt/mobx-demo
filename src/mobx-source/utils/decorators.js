@@ -36,10 +36,9 @@ export function initializeInstance(target) {
 export function createPropDecorator(propertyInitiallyEnumerable, propertyCreator) {
     return function decoratorFactory() {
         let decoratorArguments;
-        const decorator = function decorate(target, prop, descriptor, applyImmediately
         // This is a special parameter to signal the direct application of a decorator, allow extendObservable to skip the entire type decoration part,
         // as the instance to apply the decorator to equals the target
-        ) {
+        const decorator = function decorate(target, prop, descriptor, applyImmediately) {
             if (applyImmediately === true) {
                 propertyCreator(target, prop, descriptor, target, decoratorArguments);
                 return null;
@@ -59,6 +58,7 @@ export function createPropDecorator(propertyInitiallyEnumerable, propertyCreator
             };
             return createPropertyInitializerDescriptor(prop, propertyInitiallyEnumerable);
         };
+        
         if (quacksLikeADecorator(arguments)) {
             // @decorator
             decoratorArguments = EMPTY_ARRAY;

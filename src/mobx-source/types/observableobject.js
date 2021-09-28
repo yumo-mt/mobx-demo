@@ -11,6 +11,7 @@ export class ObservableObjectAdministration {
         return this.values.get(key).get();
     }
     write(key, newValue) {
+        alert('卧草')
         const instance = this.target;
         const observable = this.values.get(key);
         if (observable instanceof ComputedValue) {
@@ -80,6 +81,7 @@ export class ObservableObjectAdministration {
                 return;
             newValue = change.newValue;
         }
+        debugger;
         const observable = new ObservableValue(newValue, enhancer, `${this.name}.${stringifyKey(propName)}`, false);
         this.values.set(propName, observable);
         newValue = observable.value; // observableValue might have changed it
@@ -221,6 +223,7 @@ export function asObservableObject(target, name = "", defaultEnhancer = deepEnha
         name = (target.constructor.name || "ObservableObject") + "@" + getNextId();
     if (!name)
         name = "ObservableObject@" + getNextId();
+    // 拿到 observableobject， 里面封装着劫持和对象操作的api    
     const adm = new ObservableObjectAdministration(target, new Map(), stringifyKey(name), defaultEnhancer);
     addHiddenProp(target, $mobx, adm);
     return adm;

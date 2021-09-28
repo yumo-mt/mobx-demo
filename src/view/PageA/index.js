@@ -11,16 +11,14 @@ class PageA extends React.Component {
 
   clickBtn = () => {
     console.log('改变')
-    store.name = '改变'
+    store.job = '改变'
   }
   render() {
     return (
       <div style={{ position: "absolute" }}>
         <>
-          <div>{store.name}</div>
-          <div onClick={this.clickBtn}>A</div>
-          <div>A</div>
-          <div>A</div>
+          <div>{store.job}</div>
+          <button onClick={this.clickBtn}>你其实不知道，这是一个按钮</button>
         </>
       </div>
     )
