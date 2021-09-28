@@ -1,9 +1,9 @@
-import { invariant, once, untrackedEnd, untrackedStart } from "../internal";
+import { once, untrackedEnd, untrackedStart, die } from "../internal";
 export function hasInterceptors(interceptable) {
-    return interceptable.interceptors !== undefined && interceptable.interceptors.length > 0;
+    return interceptable.interceptors_ !== undefined && interceptable.interceptors_.length > 0;
 }
 export function registerInterceptor(interceptable, handler) {
-    const interceptors = interceptable.interceptors || (interceptable.interceptors = []);
+    const interceptors = interceptable.interceptors_ || (interceptable.interceptors_ = []);
     interceptors.push(handler);
     return once(() => {
         const idx = interceptors.indexOf(handler);
@@ -15,10 +15,11 @@ export function interceptChange(interceptable, change) {
     const prevU = untrackedStart();
     try {
         // Interceptor can modify the array, copy it to avoid concurrent modification, see #1950
-        const interceptors = [...(interceptable.interceptors || [])];
+        const interceptors = [...(interceptable.interceptors_ || [])];
         for (let i = 0, l = interceptors.length; i < l; i++) {
             change = interceptors[i](change);
-            invariant(!change || change.type, "Intercept handlers should return nothing or a change object");
+            if (change && !change.type)
+                die(14);
             if (!change)
                 break;
         }

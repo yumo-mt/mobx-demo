@@ -1,4 +1,4 @@
-import { fail } from "../internal";
+import { die, getGlobal } from "../internal";
 /**
  * These values will persist if global state is reset
  */
@@ -12,7 +12,8 @@ const persistentKeys = [
     "allowStateReads",
     "disableErrorBoundaries",
     "runId",
-    "UNCHANGED"
+    "UNCHANGED",
+    "useProxies"
 ];
 export class MobXGlobals {
     constructor() {
@@ -24,7 +25,7 @@ export class MobXGlobals {
          * N.B: this version is unrelated to the package version of MobX, and is only the version of the
          * internal state storage of MobX, and can be the same across many different package versions
          */
-        this.version = 5;
+        this.version = 6;
         /**
          * globally unique token to signal unchanged
          */
@@ -34,9 +35,11 @@ export class MobXGlobals {
          */
         this.trackingDerivation = null;
         /**
-         * Are we running a computation currently? (not a reaction)
+         * Currently running reaction. This determines if we currently have a reactive context.
+         * (Tracking derivation is also set for temporal tracking of computed values inside actions,
+         * but trackingReaction can only be set by a form of Reaction)
          */
-        this.computationDepth = 0;
+        this.trackingContext = null;
         /**
          * Each time a derivation is tracked, it is assigned a unique run-id
          */
@@ -69,7 +72,7 @@ export class MobXGlobals {
          * In general, MobX doesn't allow that when running computations and React.render.
          * To ensure that those functions stay pure.
          */
-        this.allowStateChanges = true;
+        this.allowStateChanges = false;
         /**
          * Is it allowed to read observables at this point?
          * Used to hold the state needed for `observableRequiresReaction`
@@ -78,7 +81,7 @@ export class MobXGlobals {
         /**
          * If strict mode is enabled, state changes are by default not allowed
          */
-        this.enforceActions = false;
+        this.enforceActions = true;
         /**
          * Spy callbacks
          */
@@ -101,11 +104,6 @@ export class MobXGlobals {
          * Warn if observables are accessed outside a reactive context
          */
         this.observableRequiresReaction = false;
-        /**
-         * Allows overwriting of computed properties, useful in tests but not prod as it can cause
-         * memory leaks. See https://github.com/mobxjs/mobx/issues/1867
-         */
-        this.computedConfigurable = false;
         /*
          * Don't catch and rethrow exceptions. This is useful for inspecting the state of
          * the stack when an exception occurs while debugging.
@@ -116,25 +114,23 @@ export class MobXGlobals {
          * they are not the cause, see: https://github.com/mobxjs/mobx/issues/1836
          */
         this.suppressReactionErrors = false;
+        this.useProxies = true;
+        /*
+         * print warnings about code that would fail if proxies weren't available
+         */
+        this.verifyProxies = false;
+        /**
+         * False forces all object's descriptors to
+         * writable: true
+         * configurable: true
+         */
+        this.safeDescriptors = true;
     }
-}
-const mockGlobal = {};
-export function getGlobal() {
-    if (typeof window !== "undefined") {
-        return window;
-    }
-    if (typeof global !== "undefined") {
-        return global;
-    }
-    if (typeof self !== "undefined") {
-        return self;
-    }
-    return mockGlobal;
 }
 let canMergeGlobalState = true;
 let isolateCalled = false;
 export let globalState = (function () {
-    const global = getGlobal();
+    let global = getGlobal();
     if (global.__mobxInstanceCount > 0 && !global.__mobxGlobals)
         canMergeGlobalState = false;
     if (global.__mobxGlobals && global.__mobxGlobals.version !== new MobXGlobals().version)
@@ -142,7 +138,7 @@ export let globalState = (function () {
     if (!canMergeGlobalState) {
         setTimeout(() => {
             if (!isolateCalled) {
-                fail("There are multiple, different versions of MobX active. Make sure MobX is loaded only once or use `configure({ isolateGlobalState: true })`");
+                die(35);
             }
         }, 1);
         return new MobXGlobals();
@@ -162,11 +158,12 @@ export function isolateGlobalState() {
     if (globalState.pendingReactions.length ||
         globalState.inBatch ||
         globalState.isRunningReactions)
-        fail("isolateGlobalState should be called before MobX is running any reactions");
+        die(36);
     isolateCalled = true;
     if (canMergeGlobalState) {
-        if (--getGlobal().__mobxInstanceCount === 0)
-            getGlobal().__mobxGlobals = undefined;
+        let global = getGlobal();
+        if (--global.__mobxInstanceCount === 0)
+            global.__mobxGlobals = undefined;
         globalState = new MobXGlobals();
     }
 }

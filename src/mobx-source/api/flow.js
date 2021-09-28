@@ -1,19 +1,26 @@
-import { action, fail, noop } from "../internal";
+import { action, noop, die, isFunction, isStringish, storeAnnotation, createFlowAnnotation } from "../internal";
+export const FLOW = "flow";
 let generatorId = 0;
-export class FlowCancellationError extends Error {
-    constructor() {
-        super("FLOW_CANCELLED");
-    }
+export function FlowCancellationError() {
+    this.message = "FLOW_CANCELLED";
 }
+FlowCancellationError.prototype = Object.create(Error.prototype);
 export function isFlowCancellationError(error) {
     return error instanceof FlowCancellationError;
 }
-export function flow(generator) {
-    if (arguments.length !== 1)
-        fail(!!process.env.NODE_ENV && `Flow expects 1 argument and cannot be used as decorator`);
+const flowAnnotation = createFlowAnnotation("flow");
+export const flow = Object.assign(function flow(arg1, arg2) {
+    // @flow
+    if (isStringish(arg2)) {
+        return storeAnnotation(arg1, arg2, flowAnnotation);
+    }
+    // flow(fn)
+    if (__DEV__ && arguments.length !== 1)
+        die(`Flow expects single argument with generator function`);
+    const generator = arg1;
     const name = generator.name || "<unnamed flow>";
     // Implementation based on https://github.com/tj/co/blob/master/index.js
-    return function () {
+    const res = function () {
         const ctx = this;
         const args = arguments;
         const runId = ++generatorId;
@@ -46,7 +53,7 @@ export function flow(generator) {
                 next(ret);
             }
             function next(ret) {
-                if (ret && typeof ret.then === "function") {
+                if (isFunction(ret === null || ret === void 0 ? void 0 : ret.then)) {
                     // an async iterator
                     ret.then(next, reject);
                     return;
@@ -77,8 +84,16 @@ export function flow(generator) {
         });
         return promise;
     };
-}
+    res.isMobXFlow = true;
+    return res;
+}, flowAnnotation);
 function cancelPromise(promise) {
-    if (typeof promise.cancel === "function")
+    if (isFunction(promise.cancel))
         promise.cancel();
+}
+export function flowResult(result) {
+    return result; // just tricking TypeScript :)
+}
+export function isFlow(fn) {
+    return (fn === null || fn === void 0 ? void 0 : fn.isMobXFlow) === true;
 }

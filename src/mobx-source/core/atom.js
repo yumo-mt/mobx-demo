@@ -1,27 +1,27 @@
-import { IDerivationState, createInstanceofPredicate, endBatch, getNextId, noop, onBecomeObserved, onBecomeUnobserved, propagateChanged, reportObserved, startBatch } from "../internal";
+import { IDerivationState_, createInstanceofPredicate, endBatch, getNextId, noop, onBecomeObserved, onBecomeUnobserved, propagateChanged, reportObserved, startBatch } from "../internal";
 export const $mobx = Symbol("mobx administration");
 export class Atom {
     /**
      * Create a new atom. For debugging purposes it is recommended to give it a name.
      * The onBecomeObserved and onBecomeUnobserved callbacks can be used for resource management.
      */
-    constructor(name = "Atom@" + getNextId()) {
-        this.name = name;
-        this.isPendingUnobservation = false; // for effective unobserving. BaseAtom has true, for extra optimization, so its onBecomeUnobserved never gets called, because it's not needed
-        this.isBeingObserved = false;
-        this.observers = new Set();
-        this.diffValue = 0;
-        this.lastAccessedBy = 0;
-        this.lowestObserverState = IDerivationState.NOT_TRACKING;
+    constructor(name_ = "Atom@" + getNextId()) {
+        this.name_ = name_;
+        this.isPendingUnobservation_ = false; // for effective unobserving. BaseAtom has true, for extra optimization, so its onBecomeUnobserved never gets called, because it's not needed
+        this.isBeingObserved_ = false;
+        this.observers_ = new Set();
+        this.diffValue_ = 0;
+        this.lastAccessedBy_ = 0;
+        this.lowestObserverState_ = IDerivationState_.NOT_TRACKING_;
     }
-    onBecomeObserved() {
-        if (this.onBecomeObservedListeners) {
-            this.onBecomeObservedListeners.forEach(listener => listener());
+    onBO() {
+        if (this.onBOL) {
+            this.onBOL.forEach(listener => listener());
         }
     }
-    onBecomeUnobserved() {
-        if (this.onBecomeUnobservedListeners) {
-            this.onBecomeUnobservedListeners.forEach(listener => listener());
+    onBUO() {
+        if (this.onBUOL) {
+            this.onBUOL.forEach(listener => listener());
         }
     }
     /**
@@ -40,7 +40,7 @@ export class Atom {
         endBatch();
     }
     toString() {
-        return this.name;
+        return this.name_;
     }
 }
 export const isAtom = createInstanceofPredicate("Atom", Atom);

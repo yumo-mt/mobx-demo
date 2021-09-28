@@ -1,13 +1,13 @@
-import { getAdministration } from "../internal";
+import { getAdministration, isFunction } from "../internal";
 export function intercept(thing, propOrHandler, handler) {
-    if (typeof handler === "function")
+    if (isFunction(handler))
         return interceptProperty(thing, propOrHandler, handler);
     else
         return interceptInterceptable(thing, propOrHandler);
 }
 function interceptInterceptable(thing, handler) {
-    return getAdministration(thing).intercept(handler);
+    return getAdministration(thing).intercept_(handler);
 }
 function interceptProperty(thing, property, handler) {
-    return getAdministration(thing, property).intercept(handler);
+    return getAdministration(thing, property).intercept_(handler);
 }

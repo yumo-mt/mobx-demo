@@ -1,4 +1,4 @@
-import { $mobx, autorun, createAction, fail, getNextId } from "../internal";
+import { $mobx, autorun, createAction, getNextId, die, allowStateChanges } from "../internal";
 export function when(predicate, arg1, arg2) {
     if (arguments.length === 1 || (arg1 && typeof arg1 === "object"))
         return whenPromise(predicate, arg1);
@@ -8,7 +8,7 @@ function _when(predicate, effect, opts) {
     let timeoutHandle;
     if (typeof opts.timeout === "number") {
         timeoutHandle = setTimeout(() => {
-            if (!disposer[$mobx].isDisposed) {
+            if (!disposer[$mobx].isDisposed_) {
                 disposer();
                 const error = new Error("WHEN_TIMEOUT");
                 if (opts.onError)
@@ -20,8 +20,11 @@ function _when(predicate, effect, opts) {
     }
     opts.name = opts.name || "When@" + getNextId();
     const effectAction = createAction(opts.name + "-effect", effect);
-    const disposer = autorun(r => {
-        if (predicate()) {
+    // eslint-disable-next-line
+    var disposer = autorun(r => {
+        // predicate should not change state
+        let cond = allowStateChanges(false, predicate);
+        if (cond) {
             r.dispose();
             if (timeoutHandle)
                 clearTimeout(timeoutHandle);
@@ -31,8 +34,8 @@ function _when(predicate, effect, opts) {
     return disposer;
 }
 function whenPromise(predicate, opts) {
-    if (process.env.NODE_ENV !== "production" && opts && opts.onError)
-        return fail(`the options 'onError' and 'promise' cannot be combined`);
+    if (__DEV__ && opts && opts.onError)
+        return die(`the options 'onError' and 'promise' cannot be combined`);
     let cancel;
     const res = new Promise((resolve, reject) => {
         let disposer = _when(predicate, resolve, Object.assign(Object.assign({}, opts), { onError: reject }));

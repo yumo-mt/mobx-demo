@@ -1,36 +1,30 @@
-import { globalState, isObservableArray, isObservableMap } from "../internal";
-export const OBFUSCATED_ERROR = "An invariant failed, however the error is obfuscated because this is an production build.";
+import { globalState, die } from "../internal";
+// We shorten anything used > 5 times
+export const assign = Object.assign;
+export const getDescriptor = Object.getOwnPropertyDescriptor;
+export const defineProperty = Object.defineProperty;
+export const objectPrototype = Object.prototype;
 export const EMPTY_ARRAY = [];
 Object.freeze(EMPTY_ARRAY);
 export const EMPTY_OBJECT = {};
 Object.freeze(EMPTY_OBJECT);
+const hasProxy = typeof Proxy !== "undefined";
+const plainObjectString = Object.toString();
+export function assertProxies() {
+    if (!hasProxy) {
+        die(__DEV__
+            ? "`Proxy` objects are not available in the current environment. Please configure MobX to enable a fallback implementation.`"
+            : "Proxy not available");
+    }
+}
+export function warnAboutProxyRequirement(msg) {
+    if (__DEV__ && globalState.verifyProxies) {
+        die("MobX is currently configured to be able to run in ES5 mode, but in ES5 MobX won't be able to " +
+            msg);
+    }
+}
 export function getNextId() {
     return ++globalState.mobxGuid;
-}
-export function fail(message) {
-    invariant(false, message);
-    throw "X"; // unreachable
-}
-export function invariant(check, message) {
-    if (!check)
-        throw new Error("[mobx] " + (message || OBFUSCATED_ERROR));
-}
-/**
- * Prints a deprecation message, but only one time.
- * Returns false if the deprecated message was already printed before
- */
-const deprecatedMessages = [];
-export function deprecated(msg, thing) {
-    if (process.env.NODE_ENV === "production")
-        return false;
-    if (thing) {
-        return deprecated(`'${msg}', use '${thing}' instead.`);
-    }
-    if (deprecatedMessages.indexOf(msg) !== -1)
-        return false;
-    deprecatedMessages.push(msg);
-    console.error("[mobx] Deprecated: " + msg);
-    return true;
 }
 /**
  * Makes sure that the provided function is invoked at most once.
@@ -45,30 +39,45 @@ export function once(func) {
     };
 }
 export const noop = () => { };
-export function unique(list) {
-    const res = [];
-    list.forEach(item => {
-        if (res.indexOf(item) === -1)
-            res.push(item);
-    });
-    return res;
+export function isFunction(fn) {
+    return typeof fn === "function";
+}
+export function isString(value) {
+    return typeof value === "string";
+}
+export function isStringish(value) {
+    const t = typeof value;
+    switch (t) {
+        case "string":
+        case "symbol":
+        case "number":
+            return true;
+    }
+    return false;
 }
 export function isObject(value) {
     return value !== null && typeof value === "object";
 }
 export function isPlainObject(value) {
-    if (value === null || typeof value !== "object")
+    var _a;
+    if (!isObject(value))
         return false;
     const proto = Object.getPrototypeOf(value);
-    return proto === Object.prototype || proto === null;
+    if (proto == null)
+        return true;
+    return ((_a = proto.constructor) === null || _a === void 0 ? void 0 : _a.toString()) === plainObjectString;
 }
-export function makeNonEnumerable(object, propNames) {
-    for (let i = 0; i < propNames.length; i++) {
-        addHiddenProp(object, propNames[i], object[propNames[i]]);
-    }
+// https://stackoverflow.com/a/37865170
+export function isGenerator(obj) {
+    const constructor = obj === null || obj === void 0 ? void 0 : obj.constructor;
+    if (!constructor)
+        return false;
+    if ("GeneratorFunction" === constructor.name || "GeneratorFunction" === constructor.displayName)
+        return true;
+    return false;
 }
 export function addHiddenProp(object, propName, value) {
-    Object.defineProperty(object, propName, {
+    defineProperty(object, propName, {
         enumerable: false,
         writable: true,
         configurable: true,
@@ -76,33 +85,19 @@ export function addHiddenProp(object, propName, value) {
     });
 }
 export function addHiddenFinalProp(object, propName, value) {
-    Object.defineProperty(object, propName, {
+    defineProperty(object, propName, {
         enumerable: false,
         writable: false,
         configurable: true,
         value
     });
 }
-export function isPropertyConfigurable(object, prop) {
-    const descriptor = Object.getOwnPropertyDescriptor(object, prop);
-    return !descriptor || (descriptor.configurable !== false && descriptor.writable !== false);
-}
-export function assertPropertyConfigurable(object, prop) {
-    if (process.env.NODE_ENV !== "production" && !isPropertyConfigurable(object, prop))
-        fail(`Cannot make property '${prop.toString()}' observable, it is not configurable and writable in the target object`);
-}
-export function createInstanceofPredicate(name, clazz) {
+export function createInstanceofPredicate(name, theClass) {
     const propName = "isMobX" + name;
-    clazz.prototype[propName] = true;
+    theClass.prototype[propName] = true;
     return function (x) {
         return isObject(x) && x[propName] === true;
     };
-}
-/**
- * Returns whether the argument is an array, disregarding observability.
- */
-export function isArrayLike(x) {
-    return Array.isArray(x) || isObservableArray(x);
 }
 export function isES6Map(thing) {
     return thing instanceof Map;
@@ -110,36 +105,48 @@ export function isES6Map(thing) {
 export function isES6Set(thing) {
     return thing instanceof Set;
 }
+const hasGetOwnPropertySymbols = typeof Object.getOwnPropertySymbols !== "undefined";
 /**
- * Returns the following: own keys, prototype keys & own symbol keys, if they are enumerable.
+ * Returns the following: own enumerable keys and symbols.
  */
 export function getPlainObjectKeys(object) {
-    const enumerables = new Set();
-    for (let key in object)
-        enumerables.add(key); // *all* enumerables
-    Object.getOwnPropertySymbols(object).forEach(k => {
-        if (Object.getOwnPropertyDescriptor(object, k).enumerable)
-            enumerables.add(k);
-    }); // *own* symbols
-    // Note: this implementation is missing enumerable, inherited, symbolic property names! That would however pretty expensive to add,
-    // as there is no efficient iterator that returns *all* properties
-    return Array.from(enumerables);
+    const keys = Object.keys(object);
+    // Not supported in IE, so there are not going to be symbol props anyway...
+    if (!hasGetOwnPropertySymbols)
+        return keys;
+    const symbols = Object.getOwnPropertySymbols(object);
+    if (!symbols.length)
+        return keys;
+    return [...keys, ...symbols.filter(s => objectPrototype.propertyIsEnumerable.call(object, s))];
 }
+// From Immer utils
+// Returns all own keys, including non-enumerable and symbolic
+export const ownKeys = typeof Reflect !== "undefined" && Reflect.ownKeys
+    ? Reflect.ownKeys
+    : hasGetOwnPropertySymbols
+        ? obj => Object.getOwnPropertyNames(obj).concat(Object.getOwnPropertySymbols(obj))
+        : /* istanbul ignore next */ Object.getOwnPropertyNames;
 export function stringifyKey(key) {
-    if (key && key.toString)
+    if (typeof key === "string")
+        return key;
+    if (typeof key === "symbol")
         return key.toString();
-    else
-        return new String(key).toString();
-}
-export function getMapLikeKeys(map) {
-    if (isPlainObject(map))
-        return Object.keys(map);
-    if (Array.isArray(map))
-        return map.map(([key]) => key);
-    if (isES6Map(map) || isObservableMap(map))
-        return Array.from(map.keys());
-    return fail(`Cannot get keys from '${map}'`);
+    return new String(key).toString();
 }
 export function toPrimitive(value) {
     return value === null ? null : typeof value === "object" ? "" + value : value;
 }
+export function hasProp(target, prop) {
+    return objectPrototype.hasOwnProperty.call(target, prop);
+}
+// From Immer utils
+export const getOwnPropertyDescriptors = Object.getOwnPropertyDescriptors ||
+    function getOwnPropertyDescriptors(target) {
+        // Polyfill needed for Hermes and IE, see https://github.com/facebook/hermes/issues/274
+        const res = {};
+        // Note: without polyfill for ownKeys, symbols won't be picked up
+        ownKeys(target).forEach(key => {
+            res[key] = getDescriptor(target, key);
+        });
+        return res;
+    };

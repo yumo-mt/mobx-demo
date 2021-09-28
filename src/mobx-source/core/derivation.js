@@ -1,24 +1,24 @@
-import { addObserver, fail, globalState, isComputedValue, removeObserver } from "../internal";
-export var IDerivationState;
-(function (IDerivationState) {
+import { addObserver, globalState, isComputedValue, removeObserver } from "../internal";
+export var IDerivationState_;
+(function (IDerivationState_) {
     // before being run or (outside batch and not being observed)
     // at this point derivation is not holding any data about dependency tree
-    IDerivationState[IDerivationState["NOT_TRACKING"] = -1] = "NOT_TRACKING";
+    IDerivationState_[IDerivationState_["NOT_TRACKING_"] = -1] = "NOT_TRACKING_";
     // no shallow dependency changed since last computation
     // won't recalculate derivation
     // this is what makes mobx fast
-    IDerivationState[IDerivationState["UP_TO_DATE"] = 0] = "UP_TO_DATE";
+    IDerivationState_[IDerivationState_["UP_TO_DATE_"] = 0] = "UP_TO_DATE_";
     // some deep dependency changed, but don't know if shallow dependency changed
     // will require to check first if UP_TO_DATE or POSSIBLY_STALE
     // currently only ComputedValue will propagate POSSIBLY_STALE
     //
     // having this state is second big optimization:
     // don't have to recompute on every dependency change, but only when it's needed
-    IDerivationState[IDerivationState["POSSIBLY_STALE"] = 1] = "POSSIBLY_STALE";
+    IDerivationState_[IDerivationState_["POSSIBLY_STALE_"] = 1] = "POSSIBLY_STALE_";
     // A shallow dependency has changed since last computation and the derivation
     // will need to recompute when it's needed next.
-    IDerivationState[IDerivationState["STALE"] = 2] = "STALE";
-})(IDerivationState || (IDerivationState = {}));
+    IDerivationState_[IDerivationState_["STALE_"] = 2] = "STALE_";
+})(IDerivationState_ || (IDerivationState_ = {}));
 export var TraceMode;
 (function (TraceMode) {
     TraceMode[TraceMode["NONE"] = 0] = "NONE";
@@ -46,15 +46,17 @@ export function isCaughtException(e) {
  * up until accessing x-th dependency.
  */
 export function shouldCompute(derivation) {
-    switch (derivation.dependenciesState) {
-        case IDerivationState.UP_TO_DATE:
+    switch (derivation.dependenciesState_) {
+        case IDerivationState_.UP_TO_DATE_:
             return false;
-        case IDerivationState.NOT_TRACKING:
-        case IDerivationState.STALE:
+        case IDerivationState_.NOT_TRACKING_:
+        case IDerivationState_.STALE_:
             return true;
-        case IDerivationState.POSSIBLY_STALE: {
+        case IDerivationState_.POSSIBLY_STALE_: {
+            // state propagation can occur outside of action/reactive context #2195
+            const prevAllowStateReads = allowStateReadsStart(true);
             const prevUntracked = untrackedStart(); // no need for those computeds to be reported, they will be picked up in trackDerivedFunction.
-            const obs = derivation.observing, l = obs.length;
+            const obs = derivation.observing_, l = obs.length;
             for (let i = 0; i < l; i++) {
                 const obj = obs[i];
                 if (isComputedValue(obj)) {
@@ -68,55 +70,46 @@ export function shouldCompute(derivation) {
                         catch (e) {
                             // we are not interested in the value *or* exception at this moment, but if there is one, notify all
                             untrackedEnd(prevUntracked);
+                            allowStateReadsEnd(prevAllowStateReads);
                             return true;
                         }
                     }
                     // if ComputedValue `obj` actually changed it will be computed and propagated to its observers.
                     // and `derivation` is an observer of `obj`
                     // invariantShouldCompute(derivation)
-                    if (derivation.dependenciesState === IDerivationState.STALE) {
+                    if (derivation.dependenciesState_ === IDerivationState_.STALE_) {
                         untrackedEnd(prevUntracked);
+                        allowStateReadsEnd(prevAllowStateReads);
                         return true;
                     }
                 }
             }
             changeDependenciesStateTo0(derivation);
             untrackedEnd(prevUntracked);
+            allowStateReadsEnd(prevAllowStateReads);
             return false;
         }
     }
 }
-// function invariantShouldCompute(derivation: IDerivation) {
-//     const newDepState = (derivation as any).dependenciesState
-//     if (
-//         process.env.NODE_ENV === "production" &&
-//         (newDepState === IDerivationState.POSSIBLY_STALE ||
-//             newDepState === IDerivationState.NOT_TRACKING)
-//     )
-//         fail("Illegal dependency state")
-// }
 export function isComputingDerivation() {
     return globalState.trackingDerivation !== null; // filter out actions inside computations
 }
 export function checkIfStateModificationsAreAllowed(atom) {
-    const hasObservers = atom.observers.size > 0;
-    // Should never be possible to change an observed observable from inside computed, see #798
-    if (globalState.computationDepth > 0 && hasObservers)
-        fail(process.env.NODE_ENV !== "production" &&
-            `Computed values are not allowed to cause side effects by changing observables that are already being observed. Tried to modify: ${atom.name}`);
+    if (!__DEV__) {
+        return;
+    }
+    const hasObservers = atom.observers_.size > 0;
     // Should not be possible to change observed state outside strict mode, except during initialization, see #563
-    if (!globalState.allowStateChanges && (hasObservers || globalState.enforceActions === "strict"))
-        fail(process.env.NODE_ENV !== "production" &&
+    if (!globalState.allowStateChanges && (hasObservers || globalState.enforceActions === "always"))
+        console.warn("[MobX] " +
             (globalState.enforceActions
-                ? "Since strict-mode is enabled, changing observed observable values outside actions is not allowed. Please wrap the code in an `action` if this change is intended. Tried to modify: "
-                : "Side effects like changing state are not allowed at this point. Are you trying to modify state from, for example, the render function of a React component? Tried to modify: ") +
-                atom.name);
+                ? "Since strict-mode is enabled, changing (observed) observable values without using an action is not allowed. Tried to modify: "
+                : "Side effects like changing state are not allowed at this point. Are you trying to modify state from, for example, a computed value or the render function of a React component? You can wrap side effects in 'runInAction' (or decorate functions with 'action') if needed. Tried to modify: ") +
+            atom.name_);
 }
 export function checkIfStateReadsAreAllowed(observable) {
-    if (process.env.NODE_ENV !== "production" &&
-        !globalState.allowStateReads &&
-        globalState.observableRequiresReaction) {
-        console.warn(`[mobx] Observable ${observable.name} being read outside a reactive context`);
+    if (__DEV__ && !globalState.allowStateReads && globalState.observableRequiresReaction) {
+        console.warn(`[mobx] Observable ${observable.name_} being read outside a reactive context`);
     }
 }
 /**
@@ -129,11 +122,12 @@ export function trackDerivedFunction(derivation, f, context) {
     // pre allocate array allocation + room for variation in deps
     // array will be trimmed by bindDependencies
     changeDependenciesStateTo0(derivation);
-    derivation.newObserving = new Array(derivation.observing.length + 100);
-    derivation.unboundDepsCount = 0;
-    derivation.runId = ++globalState.runId;
+    derivation.newObserving_ = new Array(derivation.observing_.length + 100);
+    derivation.unboundDepsCount_ = 0;
+    derivation.runId_ = ++globalState.runId;
     const prevTracking = globalState.trackingDerivation;
     globalState.trackingDerivation = derivation;
+    globalState.inBatch++;
     let result;
     if (globalState.disableErrorBoundaries === true) {
         result = f.call(context);
@@ -146,6 +140,7 @@ export function trackDerivedFunction(derivation, f, context) {
             result = new CaughtException(e);
         }
     }
+    globalState.inBatch--;
     globalState.trackingDerivation = prevTracking;
     bindDependencies(derivation);
     warnAboutDerivationWithoutDependencies(derivation);
@@ -153,12 +148,12 @@ export function trackDerivedFunction(derivation, f, context) {
     return result;
 }
 function warnAboutDerivationWithoutDependencies(derivation) {
-    if (process.env.NODE_ENV === "production")
+    if (!__DEV__)
         return;
-    if (derivation.observing.length !== 0)
+    if (derivation.observing_.length !== 0)
         return;
-    if (globalState.reactionRequiresObservable || derivation.requiresObservable) {
-        console.warn(`[mobx] Derivation ${derivation.name} is created/updated without reading any observable value`);
+    if (globalState.reactionRequiresObservable || derivation.requiresObservable_) {
+        console.warn(`[mobx] Derivation ${derivation.name_} is created/updated without reading any observable value`);
     }
 }
 /**
@@ -168,65 +163,65 @@ function warnAboutDerivationWithoutDependencies(derivation) {
  */
 function bindDependencies(derivation) {
     // invariant(derivation.dependenciesState !== IDerivationState.NOT_TRACKING, "INTERNAL ERROR bindDependencies expects derivation.dependenciesState !== -1");
-    const prevObserving = derivation.observing;
-    const observing = (derivation.observing = derivation.newObserving);
-    let lowestNewObservingDerivationState = IDerivationState.UP_TO_DATE;
+    const prevObserving = derivation.observing_;
+    const observing = (derivation.observing_ = derivation.newObserving_);
+    let lowestNewObservingDerivationState = IDerivationState_.UP_TO_DATE_;
     // Go through all new observables and check diffValue: (this list can contain duplicates):
     //   0: first occurrence, change to 1 and keep it
     //   1: extra occurrence, drop it
-    let i0 = 0, l = derivation.unboundDepsCount;
+    let i0 = 0, l = derivation.unboundDepsCount_;
     for (let i = 0; i < l; i++) {
         const dep = observing[i];
-        if (dep.diffValue === 0) {
-            dep.diffValue = 1;
+        if (dep.diffValue_ === 0) {
+            dep.diffValue_ = 1;
             if (i0 !== i)
                 observing[i0] = dep;
             i0++;
         }
         // Upcast is 'safe' here, because if dep is IObservable, `dependenciesState` will be undefined,
         // not hitting the condition
-        if (dep.dependenciesState > lowestNewObservingDerivationState) {
-            lowestNewObservingDerivationState = dep.dependenciesState;
+        if (dep.dependenciesState_ > lowestNewObservingDerivationState) {
+            lowestNewObservingDerivationState = dep.dependenciesState_;
         }
     }
     observing.length = i0;
-    derivation.newObserving = null; // newObserving shouldn't be needed outside tracking (statement moved down to work around FF bug, see #614)
+    derivation.newObserving_ = null; // newObserving shouldn't be needed outside tracking (statement moved down to work around FF bug, see #614)
     // Go through all old observables and check diffValue: (it is unique after last bindDependencies)
     //   0: it's not in new observables, unobserve it
     //   1: it keeps being observed, don't want to notify it. change to 0
     l = prevObserving.length;
     while (l--) {
         const dep = prevObserving[l];
-        if (dep.diffValue === 0) {
+        if (dep.diffValue_ === 0) {
             removeObserver(dep, derivation);
         }
-        dep.diffValue = 0;
+        dep.diffValue_ = 0;
     }
     // Go through all new observables and check diffValue: (now it should be unique)
     //   0: it was set to 0 in last loop. don't need to do anything.
     //   1: it wasn't observed, let's observe it. set back to 0
     while (i0--) {
         const dep = observing[i0];
-        if (dep.diffValue === 1) {
-            dep.diffValue = 0;
+        if (dep.diffValue_ === 1) {
+            dep.diffValue_ = 0;
             addObserver(dep, derivation);
         }
     }
     // Some new observed derivations may become stale during this derivation computation
     // so they have had no chance to propagate staleness (#916)
-    if (lowestNewObservingDerivationState !== IDerivationState.UP_TO_DATE) {
-        derivation.dependenciesState = lowestNewObservingDerivationState;
-        derivation.onBecomeStale();
+    if (lowestNewObservingDerivationState !== IDerivationState_.UP_TO_DATE_) {
+        derivation.dependenciesState_ = lowestNewObservingDerivationState;
+        derivation.onBecomeStale_();
     }
 }
 export function clearObserving(derivation) {
     // invariant(globalState.inBatch > 0, "INTERNAL ERROR clearObserving should be called only inside batch");
-    const obs = derivation.observing;
-    derivation.observing = [];
+    const obs = derivation.observing_;
+    derivation.observing_ = [];
     let i = obs.length;
     while (i--)
         removeObserver(obs[i], derivation);
-    derivation.dependenciesState = IDerivationState.NOT_TRACKING;
+    derivation.dependenciesState_ = IDerivationState_.NOT_TRACKING_;
 }
 export function untracked(action) {
     const prev = untrackedStart();
@@ -258,11 +253,11 @@ export function allowStateReadsEnd(prev) {
  *
  */
 export function changeDependenciesStateTo0(derivation) {
-    if (derivation.dependenciesState === IDerivationState.UP_TO_DATE)
+    if (derivation.dependenciesState_ === IDerivationState_.UP_TO_DATE_)
         return;
-    derivation.dependenciesState = IDerivationState.UP_TO_DATE;
-    const obs = derivation.observing;
+    derivation.dependenciesState_ = IDerivationState_.UP_TO_DATE_;
+    const obs = derivation.observing_;
     let i = obs.length;
     while (i--)
-        obs[i].lowestObserverState = IDerivationState.UP_TO_DATE;
+        obs[i].lowestObserverState_ = IDerivationState_.UP_TO_DATE_;
 }

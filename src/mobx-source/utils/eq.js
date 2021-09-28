@@ -1,5 +1,5 @@
-import { isES6Map, isObservableArray, isObservableMap, isES6Set, isObservableSet } from "../internal";
-const toString = Object.prototype.toString;
+import { isES6Map, isObservableArray, isObservableMap, isES6Set, isObservableSet, hasProp, isFunction, objectPrototype } from "../internal";
+const toString = objectPrototype.toString;
 export function deepEqual(a, b, depth = -1) {
     return eq(a, b, depth);
 }
@@ -18,11 +18,8 @@ function eq(a, b, depth, aStack, bStack) {
         return b !== b;
     // Exhaust primitive checks
     const type = typeof a;
-    if (type !== "function" && type !== "object" && typeof b != "object")
+    if (!isFunction(type) && type !== "object" && typeof b != "object")
         return false;
-    // Unwrap any wrapped objects.
-    a = unwrap(a);
-    b = unwrap(b);
     // Compare `[[Class]]` names.
     const className = toString.call(a);
     if (className !== toString.call(b))
@@ -50,7 +47,18 @@ function eq(a, b, depth, aStack, bStack) {
             return +a === +b;
         case "[object Symbol]":
             return (typeof Symbol !== "undefined" && Symbol.valueOf.call(a) === Symbol.valueOf.call(b));
+        case "[object Map]":
+        case "[object Set]":
+            // Maps and Sets are unwrapped to arrays of entry-pairs, adding an incidental level.
+            // Hide this extra level by increasing the depth.
+            if (depth >= 0) {
+                depth++;
+            }
+            break;
     }
+    // Unwrap any wrapped objects.
+    a = unwrap(a);
+    b = unwrap(b);
     const areArrays = className === "[object Array]";
     if (!areArrays) {
         if (typeof a != "object" || typeof b != "object")
@@ -59,11 +67,12 @@ function eq(a, b, depth, aStack, bStack) {
         // from different frames are.
         const aCtor = a.constructor, bCtor = b.constructor;
         if (aCtor !== bCtor &&
-            !(typeof aCtor === "function" &&
+            !(isFunction(aCtor) &&
                 aCtor instanceof aCtor &&
-                typeof bCtor === "function" &&
+                isFunction(bCtor) &&
                 bCtor instanceof bCtor) &&
-            ("constructor" in a && "constructor" in b)) {
+            "constructor" in a &&
+            "constructor" in b) {
             return false;
         }
     }
@@ -112,7 +121,7 @@ function eq(a, b, depth, aStack, bStack) {
         while (length--) {
             // Deep compare each member
             key = keys[length];
-            if (!(has(b, key) && eq(a[key], b[key], depth - 1, aStack, bStack)))
+            if (!(hasProp(b, key) && eq(a[key], b[key], depth - 1, aStack, bStack)))
                 return false;
         }
     }
@@ -129,7 +138,4 @@ function unwrap(a) {
     if (isES6Set(a) || isObservableSet(a))
         return Array.from(a.entries());
     return a;
-}
-function has(a, key) {
-    return Object.prototype.hasOwnProperty.call(a, key);
 }

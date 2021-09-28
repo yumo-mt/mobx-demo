@@ -1,51 +1,44 @@
-import { globalState, isolateGlobalState, setReactionScheduler, fail, deprecated } from "../internal";
+import { globalState, isolateGlobalState, setReactionScheduler } from "../internal";
+const NEVER = "never";
+const ALWAYS = "always";
+const OBSERVED = "observed";
+// const IF_AVAILABLE = "ifavailable"
 export function configure(options) {
-    const { enforceActions, computedRequiresReaction, computedConfigurable, disableErrorBoundaries, reactionScheduler, reactionRequiresObservable, observableRequiresReaction } = options;
     if (options.isolateGlobalState === true) {
         isolateGlobalState();
     }
+    const { useProxies, enforceActions } = options;
+    if (useProxies !== undefined) {
+        globalState.useProxies =
+            useProxies === ALWAYS
+                ? true
+                : useProxies === NEVER
+                    ? false
+                    : typeof Proxy !== "undefined";
+    }
+    if (useProxies === "ifavailable")
+        globalState.verifyProxies = true;
     if (enforceActions !== undefined) {
-        if (typeof enforceActions === "boolean" || enforceActions === "strict")
-            deprecated(`Deprecated value for 'enforceActions', use 'false' => '"never"', 'true' => '"observed"', '"strict"' => "'always'" instead`);
-        let ea;
-        switch (enforceActions) {
-            case true:
-            case "observed":
-                ea = true;
-                break;
-            case false:
-            case "never":
-                ea = false;
-                break;
-            case "strict":
-            case "always":
-                ea = "strict";
-                break;
-            default:
-                fail(`Invalid value for 'enforceActions': '${enforceActions}', expected 'never', 'always' or 'observed'`);
-        }
+        const ea = enforceActions === ALWAYS ? ALWAYS : enforceActions === OBSERVED;
         globalState.enforceActions = ea;
-        globalState.allowStateChanges = ea === true || ea === "strict" ? false : true;
+        globalState.allowStateChanges = ea === true || ea === ALWAYS ? false : true;
     }
-    if (computedRequiresReaction !== undefined) {
-        globalState.computedRequiresReaction = !!computedRequiresReaction;
+    ;
+    [
+        "computedRequiresReaction",
+        "reactionRequiresObservable",
+        "observableRequiresReaction",
+        "disableErrorBoundaries",
+        "safeDescriptors"
+    ].forEach(key => {
+        if (key in options)
+            globalState[key] = !!options[key];
+    });
+    globalState.allowStateReads = !globalState.observableRequiresReaction;
+    if (__DEV__ && globalState.disableErrorBoundaries === true) {
+        console.warn("WARNING: Debug feature only. MobX will NOT recover from errors when `disableErrorBoundaries` is enabled.");
     }
-    if (reactionRequiresObservable !== undefined) {
-        globalState.reactionRequiresObservable = !!reactionRequiresObservable;
-    }
-    if (observableRequiresReaction !== undefined) {
-        globalState.observableRequiresReaction = !!observableRequiresReaction;
-        globalState.allowStateReads = !globalState.observableRequiresReaction;
-    }
-    if (computedConfigurable !== undefined) {
-        globalState.computedConfigurable = !!computedConfigurable;
-    }
-    if (disableErrorBoundaries !== undefined) {
-        if (disableErrorBoundaries === true)
-            console.warn("WARNING: Debug feature only. MobX will NOT recover from errors when `disableErrorBoundaries` is enabled.");
-        globalState.disableErrorBoundaries = !!disableErrorBoundaries;
-    }
-    if (reactionScheduler) {
-        setReactionScheduler(reactionScheduler);
+    if (options.reactionScheduler) {
+        setReactionScheduler(options.reactionScheduler);
     }
 }

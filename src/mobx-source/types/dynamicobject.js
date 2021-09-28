@@ -1,77 +1,59 @@
-import { $mobx, Atom, fail, mobxDidRunLazyInitializersSymbol, set } from "../internal";
+import { $mobx, warnAboutProxyRequirement, assertProxies, die, isStringish, globalState, asObservableObject } from "../internal";
 function getAdm(target) {
     return target[$mobx];
-}
-function isPropertyKey(val) {
-    return typeof val === "string" || typeof val === "number" || typeof val === "symbol";
 }
 // Optimization: we don't need the intermediate objects and could have a completely custom administration for DynamicObjects,
 // and skip either the internal values map, or the base object with its property descriptors!
 const objectProxyTraps = {
     has(target, name) {
-        debugger
-        if (name === $mobx || name === "constructor" || name === mobxDidRunLazyInitializersSymbol)
-            return true;
-        const adm = getAdm(target);
-        // MWE: should `in` operator be reactive? If not, below code path will be faster / more memory efficient
-        // TODO: check performance stats!
-        // if (adm.values.get(name as string)) return true
-        if (isPropertyKey(name))
-            return adm.has(name);
-        return name in target;
+        if (__DEV__ && globalState.trackingDerivation)
+            warnAboutProxyRequirement("detect new properties using the 'in' operator. Use 'has' from 'mobx' instead.");
+        return getAdm(target).has_(name);
     },
     get(target, name) {
-        debugger
-
-        if (name === $mobx || name === "constructor" || name === mobxDidRunLazyInitializersSymbol)
-            return target[name];
-        const adm = getAdm(target);
-        const observable = adm.values.get(name);
-        if (observable instanceof Atom) {
-            const result = observable.get();
-            if (result === undefined) {
-                // This fixes #1796, because deleting a prop that has an
-                // undefined value won't retrigger a observer (no visible effect),
-                // the autorun wouldn't subscribe to future key changes (see also next comment)
-                adm.has(name);
-            }
-            return result;
-        }
-        // make sure we start listening to future keys
-        // note that we only do this here for optimization
-        if (isPropertyKey(name))
-            adm.has(name);
-        return target[name];
+        return getAdm(target).get_(name);
     },
     set(target, name, value) {
-        debugger
-        if (!isPropertyKey(name))
+        var _a;
+        if (!isStringish(name))
             return false;
-        set(target, name, value);
-        return true;
+        if (__DEV__ && !getAdm(target).values_.has(name)) {
+            warnAboutProxyRequirement("add a new observable property through direct assignment. Use 'set' from 'mobx' instead.");
+        }
+        // null (intercepted) -> true (success)
+        return (_a = getAdm(target).set_(name, value, true)) !== null && _a !== void 0 ? _a : true;
     },
     deleteProperty(target, name) {
-        debugger
-        if (!isPropertyKey(name))
+        var _a;
+        if (__DEV__) {
+            warnAboutProxyRequirement("delete properties from an observable object. Use 'remove' from 'mobx' instead.");
+        }
+        if (!isStringish(name))
             return false;
-        const adm = getAdm(target);
-        adm.remove(name);
-        return true;
+        // null (intercepted) -> true (success)
+        return (_a = getAdm(target).delete_(name, true)) !== null && _a !== void 0 ? _a : true;
+    },
+    defineProperty(target, name, descriptor) {
+        var _a;
+        if (__DEV__) {
+            warnAboutProxyRequirement("define property on an observable object. Use 'defineProperty' from 'mobx' instead.");
+        }
+        // null (intercepted) -> true (success)
+        return (_a = getAdm(target).defineProperty_(name, descriptor)) !== null && _a !== void 0 ? _a : true;
     },
     ownKeys(target) {
-        debugger
-        const adm = getAdm(target);
-        adm.keysAtom.reportObserved();
-        return Reflect.ownKeys(target);
+        if (__DEV__ && globalState.trackingDerivation)
+            warnAboutProxyRequirement("iterate keys to detect added / removed properties. Use `keys` from 'mobx' instead.");
+        return getAdm(target).ownKeys_();
     },
     preventExtensions(target) {
-        debugger
-        fail(`Dynamic observable objects cannot be frozen`);
-        return false;
+        die(13);
     }
 };
-export function createDynamicObservableObject(base) {
-    const proxy = new Proxy(base, objectProxyTraps);
-    base[$mobx].proxy = proxy;
-    return proxy;
+export function asDynamicObservableObject(target, options) {
+    var _a;
+    var _b;
+    assertProxies();
+    target = asObservableObject(target, options);
+    return ((_a = (_b = target[$mobx]).proxy_) !== null && _a !== void 0 ? _a : (_b.proxy_ = new Proxy(target, objectProxyTraps)));
 }

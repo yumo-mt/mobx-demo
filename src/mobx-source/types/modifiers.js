@@ -1,4 +1,4 @@
-import { deepEqual, fail, isES6Map, isES6Set, isObservable, isObservableArray, isObservableMap, isObservableSet, isObservableObject, isPlainObject, observable } from "../internal";
+import { deepEqual, isES6Map, isES6Set, isObservable, isObservableArray, isObservableMap, isObservableSet, isObservableObject, isPlainObject, observable, die } from "../internal";
 export function deepEnhancer(v, _, name) {
     // it is an observable already, done
     if (isObservable(v))
@@ -27,16 +27,16 @@ export function shallowEnhancer(v, _, name) {
         return observable.map(v, { name, deep: false });
     if (isES6Set(v))
         return observable.set(v, { name, deep: false });
-    return fail(process.env.NODE_ENV !== "production" &&
-        "The shallow modifier / decorator can only used in combination with arrays, objects, maps and sets");
+    if (__DEV__)
+        die("The shallow modifier / decorator can only used in combination with arrays, objects, maps and sets");
 }
 export function referenceEnhancer(newValue) {
     // never turn into an observable
     return newValue;
 }
-export function refStructEnhancer(v, oldValue, name) {
-    if (process.env.NODE_ENV !== "production" && isObservable(v))
-        throw `observable.struct should not be used with observable values`;
+export function refStructEnhancer(v, oldValue) {
+    if (__DEV__ && isObservable(v))
+        die(`observable.struct should not be used with observable values`);
     if (deepEqual(v, oldValue))
         return oldValue;
     return v;

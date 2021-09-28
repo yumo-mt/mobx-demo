@@ -1,36 +1,34 @@
-import { ComputedValue, asObservableObject, comparer, createPropDecorator, invariant } from "../internal";
-export const computedDecorator = createPropDecorator(false, (instance, propertyName, descriptor, decoratorTarget, decoratorArgs) => {
-    const { get, set } = descriptor; // initialValue is the descriptor for get / set props
-    // Optimization: faster on decorator target or instance? Assuming target
-    // Optimization: find out if declaring on instance isn't just faster. (also makes the property descriptor simpler). But, more memory usage..
-    // Forcing instance now, fixes hot reloadig issues on React Native:
-    const options = decoratorArgs[0] || {};
-    asObservableObject(instance).addComputedProp(instance, propertyName, Object.assign({ get,
-        set, context: instance }, options));
+import { ComputedValue, storeAnnotation, createDecoratorAnnotation, isStringish, isPlainObject, isFunction, die, createComputedAnnotation, comparer } from "../internal";
+export const COMPUTED = "computed";
+export const COMPUTED_STRUCT = "computed.struct";
+const computedAnnotation = createComputedAnnotation(COMPUTED);
+const computedStructAnnotation = createComputedAnnotation(COMPUTED_STRUCT, {
+    equals: comparer.structural
 });
-const computedStructDecorator = computedDecorator({ equals: comparer.structural });
 /**
  * Decorator for class properties: @computed get value() { return expr; }.
  * For legacy purposes also invokable as ES5 observable created: `computed(() => expr)`;
  */
-export const computed = function computed(arg1, arg2, arg3) {
-    if (typeof arg2 === "string") {
+export const computed = function computed(arg1, arg2) {
+    if (isStringish(arg2)) {
         // @computed
-        return computedDecorator.apply(null, arguments);
+        return storeAnnotation(arg1, arg2, computedAnnotation);
     }
-    if (arg1 !== null && typeof arg1 === "object" && arguments.length === 1) {
+    if (isPlainObject(arg1)) {
         // @computed({ options })
-        return computedDecorator.apply(null, arguments);
+        return createDecoratorAnnotation(createComputedAnnotation(COMPUTED, arg1));
     }
     // computed(expr, options?)
-    if (process.env.NODE_ENV !== "production") {
-        invariant(typeof arg1 === "function", "First argument to `computed` should be an expression.");
-        invariant(arguments.length < 3, "Computed takes one or two arguments if used as function");
+    if (__DEV__) {
+        if (!isFunction(arg1))
+            die("First argument to `computed` should be an expression.");
+        if (isFunction(arg2))
+            die("A setter as second argument is no longer supported, use `{ set: fn }` option instead");
     }
-    const opts = typeof arg2 === "object" ? arg2 : {};
+    const opts = isPlainObject(arg2) ? arg2 : {};
     opts.get = arg1;
-    opts.set = typeof arg2 === "function" ? arg2 : opts.set;
     opts.name = opts.name || arg1.name || ""; /* for generated name */
     return new ComputedValue(opts);
 };
-computed.struct = computedStructDecorator;
+Object.assign(computed, computedAnnotation);
+computed.struct = createDecoratorAnnotation(computedStructAnnotation);

@@ -1,4 +1,4 @@
-import { EMPTY_OBJECT, Reaction, action, comparer, getNextId, invariant, isAction } from "../internal";
+import { EMPTY_OBJECT, Reaction, action, comparer, getNextId, isAction, isFunction, isPlainObject, die, allowStateChanges } from "../internal";
 /**
  * Creates a named reactive view and keeps it alive, so that the view is always
  * updated if one of the dependencies changes, even when the view is not further used by something else.
@@ -6,9 +6,11 @@ import { EMPTY_OBJECT, Reaction, action, comparer, getNextId, invariant, isActio
  * @returns disposer function, which can be used to stop the view from being updated in the future.
  */
 export function autorun(view, opts = EMPTY_OBJECT) {
-    if (process.env.NODE_ENV !== "production") {
-        invariant(typeof view === "function", "Autorun expects a function as first argument");
-        invariant(isAction(view) === false, "Autorun does not accept actions since actions are untrackable");
+    if (__DEV__) {
+        if (!isFunction(view))
+            die("Autorun expects a function as first argument");
+        if (isAction(view))
+            die("Autorun does not accept actions since actions are untrackable");
     }
     const name = (opts && opts.name) || view.name || "Autorun@" + getNextId();
     const runSync = !opts.scheduler && !opts.delay;
@@ -28,7 +30,7 @@ export function autorun(view, opts = EMPTY_OBJECT) {
                 isScheduled = true;
                 scheduler(() => {
                     isScheduled = false;
-                    if (!reaction.isDisposed)
+                    if (!reaction.isDisposed_)
                         reaction.track(reactionRunner);
                 });
             }
@@ -37,8 +39,8 @@ export function autorun(view, opts = EMPTY_OBJECT) {
     function reactionRunner() {
         view(reaction);
     }
-    reaction.schedule();
-    return reaction.getDisposer();
+    reaction.schedule_();
+    return reaction.getDisposer_();
 }
 const run = (f) => f();
 function createSchedulerFromOptions(opts) {
@@ -49,9 +51,11 @@ function createSchedulerFromOptions(opts) {
             : run;
 }
 export function reaction(expression, effect, opts = EMPTY_OBJECT) {
-    if (process.env.NODE_ENV !== "production") {
-        invariant(typeof expression === "function", "First argument to reaction should be a function");
-        invariant(typeof opts === "object", "Third argument of reactions should be an object");
+    if (__DEV__) {
+        if (!isFunction(expression) || !isFunction(effect))
+            die("First and second argument to reaction should be functions");
+        if (!isPlainObject(opts))
+            die("Third argument of reactions should be an object");
     }
     const name = opts.name || "Reaction@" + getNextId();
     const effectAction = action(name, opts.onError ? wrapErrorHandler(opts.onError, effect) : effect);
@@ -60,6 +64,7 @@ export function reaction(expression, effect, opts = EMPTY_OBJECT) {
     let firstTime = true;
     let isScheduled = false;
     let value;
+    let oldValue = undefined; // only an issue with fireImmediately
     const equals = opts.compareStructural
         ? comparer.structural
         : opts.equals || comparer.default;
@@ -73,24 +78,24 @@ export function reaction(expression, effect, opts = EMPTY_OBJECT) {
         }
     }, opts.onError, opts.requiresObservable);
     function reactionRunner() {
-        isScheduled = false; // Q: move into reaction runner?
-        if (r.isDisposed)
+        isScheduled = false;
+        if (r.isDisposed_)
             return;
         let changed = false;
         r.track(() => {
-            const nextValue = expression(r);
+            const nextValue = allowStateChanges(false, () => expression(r));
             changed = firstTime || !equals(value, nextValue);
+            oldValue = value;
             value = nextValue;
         });
         if (firstTime && opts.fireImmediately)
-            effectAction(value, r);
-        if (!firstTime && changed === true)
-            effectAction(value, r);
-        if (firstTime)
-            firstTime = false;
+            effectAction(value, oldValue, r);
+        else if (!firstTime && changed)
+            effectAction(value, oldValue, r);
+        firstTime = false;
     }
-    r.schedule();
-    return r.getDisposer();
+    r.schedule_();
+    return r.getDisposer_();
 }
 function wrapErrorHandler(errorHandler, baseFn) {
     return function () {

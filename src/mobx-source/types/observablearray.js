@@ -1,118 +1,107 @@
-import { $mobx, Atom, EMPTY_ARRAY, addHiddenFinalProp, checkIfStateModificationsAreAllowed, createInstanceofPredicate, fail, getNextId, hasInterceptors, hasListeners, interceptChange, isObject, isSpyEnabled, notifyListeners, registerInterceptor, registerListener, spyReportEnd, spyReportStart, allowStateChangesStart, allowStateChangesEnd } from "../internal";
-const MAX_SPLICE_SIZE = 10000; // See e.g. https://github.com/mobxjs/mobx/issues/859
+import { $mobx, Atom, EMPTY_ARRAY, addHiddenFinalProp, checkIfStateModificationsAreAllowed, createInstanceofPredicate, getNextId, hasInterceptors, hasListeners, interceptChange, isObject, isSpyEnabled, notifyListeners, registerInterceptor, registerListener, spyReportEnd, spyReportStart, allowStateChangesStart, allowStateChangesEnd, assertProxies, reserveArrayBuffer, hasProp, die, globalState } from "../internal";
+const SPLICE = "splice";
+export const UPDATE = "update";
+export const MAX_SPLICE_SIZE = 10000; // See e.g. https://github.com/mobxjs/mobx/issues/859
 const arrayTraps = {
     get(target, name) {
+        const adm = target[$mobx];
         if (name === $mobx)
-            return target[$mobx];
+            return adm;
         if (name === "length")
-            return target[$mobx].getArrayLength();
-        if (typeof name === "number") {
-            return arrayExtensions.get.call(target, name);
-        }
+            return adm.getArrayLength_();
         if (typeof name === "string" && !isNaN(name)) {
-            return arrayExtensions.get.call(target, parseInt(name));
+            return adm.get_(parseInt(name));
         }
-        if (arrayExtensions.hasOwnProperty(name)) {
+        if (hasProp(arrayExtensions, name)) {
             return arrayExtensions[name];
         }
         return target[name];
     },
     set(target, name, value) {
+        const adm = target[$mobx];
         if (name === "length") {
-            target[$mobx].setArrayLength(value);
-        }
-        if (typeof name === "number") {
-            arrayExtensions.set.call(target, name, value);
+            adm.setArrayLength_(value);
         }
         if (typeof name === "symbol" || isNaN(name)) {
             target[name] = value;
         }
         else {
             // numeric string
-            arrayExtensions.set.call(target, parseInt(name), value);
+            adm.set_(parseInt(name), value);
         }
         return true;
     },
-    preventExtensions(target) {
-        fail(`Observable arrays cannot be frozen`);
-        return false;
+    preventExtensions() {
+        die(15);
     }
 };
-export function createObservableArray(initialValues, enhancer, name = "ObservableArray@" + getNextId(), owned = false) {
-    const adm = new ObservableArrayAdministration(name, enhancer, owned);
-    addHiddenFinalProp(adm.values, $mobx, adm);
-    const proxy = new Proxy(adm.values, arrayTraps);
-    adm.proxy = proxy;
-    if (initialValues && initialValues.length) {
-        const prev = allowStateChangesStart(true);
-        adm.spliceWithArray(0, 0, initialValues);
-        allowStateChangesEnd(prev);
+export class ObservableArrayAdministration {
+    constructor(name, enhancer, owned_, legacyMode_) {
+        this.owned_ = owned_;
+        this.legacyMode_ = legacyMode_;
+        this.values_ = []; // this is the prop that gets proxied, so can't replace it!
+        this.lastKnownLength_ = 0;
+        this.atom_ = new Atom(name || "ObservableArray@" + getNextId());
+        this.enhancer_ = (newV, oldV) => enhancer(newV, oldV, name + "[..]");
     }
-    return proxy;
-}
-class ObservableArrayAdministration {
-    constructor(name, enhancer, owned) {
-        this.owned = owned;
-        this.values = [];
-        this.proxy = undefined;
-        this.lastKnownLength = 0;
-        this.atom = new Atom(name || "ObservableArray@" + getNextId());
-        this.enhancer = (newV, oldV) => enhancer(newV, oldV, name + "[..]");
-    }
-    dehanceValue(value) {
+    dehanceValue_(value) {
         if (this.dehancer !== undefined)
             return this.dehancer(value);
         return value;
     }
-    dehanceValues(values) {
+    dehanceValues_(values) {
         if (this.dehancer !== undefined && values.length > 0)
             return values.map(this.dehancer);
         return values;
     }
-    intercept(handler) {
+    intercept_(handler) {
         return registerInterceptor(this, handler);
     }
-    observe(listener, fireImmediately = false) {
+    observe_(listener, fireImmediately = false) {
         if (fireImmediately) {
             listener({
-                object: this.proxy,
+                observableKind: "array",
+                object: this.proxy_,
+                debugObjectName: this.atom_.name_,
                 type: "splice",
                 index: 0,
-                added: this.values.slice(),
-                addedCount: this.values.length,
+                added: this.values_.slice(),
+                addedCount: this.values_.length,
                 removed: [],
                 removedCount: 0
             });
         }
         return registerListener(this, listener);
     }
-    getArrayLength() {
-        this.atom.reportObserved();
-        return this.values.length;
+    getArrayLength_() {
+        this.atom_.reportObserved();
+        return this.values_.length;
     }
-    setArrayLength(newLength) {
+    setArrayLength_(newLength) {
         if (typeof newLength !== "number" || newLength < 0)
-            throw new Error("[mobx.array] Out of range: " + newLength);
-        let currentLength = this.values.length;
+            die("Out of range: " + newLength);
+        let currentLength = this.values_.length;
         if (newLength === currentLength)
             return;
         else if (newLength > currentLength) {
             const newItems = new Array(newLength - currentLength);
             for (let i = 0; i < newLength - currentLength; i++)
                 newItems[i] = undefined; // No Array.fill everywhere...
-            this.spliceWithArray(currentLength, 0, newItems);
+            this.spliceWithArray_(currentLength, 0, newItems);
         }
         else
-            this.spliceWithArray(newLength, currentLength - newLength);
+            this.spliceWithArray_(newLength, currentLength - newLength);
     }
-    updateArrayLength(oldLength, delta) {
-        if (oldLength !== this.lastKnownLength)
-            throw new Error("[mobx] Modification exception: the internal structure of an observable array was changed.");
-        this.lastKnownLength += delta;
+    updateArrayLength_(oldLength, delta) {
+        if (oldLength !== this.lastKnownLength_)
+            die(16);
+        this.lastKnownLength_ += delta;
+        if (this.legacyMode_ && delta > 0)
+            reserveArrayBuffer(oldLength + delta + 1);
     }
-    spliceWithArray(index, deleteCount, newItems) {
-        checkIfStateModificationsAreAllowed(this.atom);
-        const length = this.values.length;
+    spliceWithArray_(index, deleteCount, newItems) {
+        checkIfStateModificationsAreAllowed(this.atom_);
+        const length = this.values_.length;
         if (index === undefined)
             index = 0;
         else if (index > length)
@@ -129,8 +118,8 @@ class ObservableArrayAdministration {
             newItems = EMPTY_ARRAY;
         if (hasInterceptors(this)) {
             const change = interceptChange(this, {
-                object: this.proxy,
-                type: "splice",
+                object: this.proxy_,
+                type: SPLICE,
                 index,
                 removedCount: deleteCount,
                 added: newItems
@@ -140,35 +129,41 @@ class ObservableArrayAdministration {
             deleteCount = change.removedCount;
             newItems = change.added;
         }
-        newItems = newItems.length === 0 ? newItems : newItems.map(v => this.enhancer(v, undefined));
-        if (process.env.NODE_ENV !== "production") {
+        newItems =
+            newItems.length === 0 ? newItems : newItems.map(v => this.enhancer_(v, undefined));
+        if (this.legacyMode_ || __DEV__) {
             const lengthDelta = newItems.length - deleteCount;
-            this.updateArrayLength(length, lengthDelta); // checks if internal array wasn't modified
+            this.updateArrayLength_(length, lengthDelta); // checks if internal array wasn't modified
         }
-        const res = this.spliceItemsIntoValues(index, deleteCount, newItems);
+        const res = this.spliceItemsIntoValues_(index, deleteCount, newItems);
         if (deleteCount !== 0 || newItems.length !== 0)
-            this.notifyArraySplice(index, newItems, res);
-        return this.dehanceValues(res);
+            this.notifyArraySplice_(index, newItems, res);
+        return this.dehanceValues_(res);
     }
-    spliceItemsIntoValues(index, deleteCount, newItems) {
+    spliceItemsIntoValues_(index, deleteCount, newItems) {
         if (newItems.length < MAX_SPLICE_SIZE) {
-            return this.values.splice(index, deleteCount, ...newItems);
+            return this.values_.splice(index, deleteCount, ...newItems);
         }
         else {
-            const res = this.values.slice(index, index + deleteCount);
-            this.values = this.values
-                .slice(0, index)
-                .concat(newItems, this.values.slice(index + deleteCount));
+            const res = this.values_.slice(index, index + deleteCount);
+            let oldItems = this.values_.slice(index + deleteCount);
+            this.values_.length = index + newItems.length - deleteCount;
+            for (let i = 0; i < newItems.length; i++)
+                this.values_[index + i] = newItems[i];
+            for (let i = 0; i < oldItems.length; i++)
+                this.values_[index + newItems.length + i] = oldItems[i];
             return res;
         }
     }
-    notifyArrayChildUpdate(index, newValue, oldValue) {
-        const notifySpy = !this.owned && isSpyEnabled();
+    notifyArrayChildUpdate_(index, newValue, oldValue) {
+        const notifySpy = !this.owned_ && isSpyEnabled();
         const notify = hasListeners(this);
         const change = notify || notifySpy
             ? {
-                object: this.proxy,
-                type: "update",
+                observableKind: "array",
+                object: this.proxy_,
+                type: UPDATE,
+                debugObjectName: this.atom_.name_,
                 index,
                 newValue,
                 oldValue
@@ -176,21 +171,23 @@ class ObservableArrayAdministration {
             : null;
         // The reason why this is on right hand side here (and not above), is this way the uglifier will drop it, but it won't
         // cause any runtime overhead in development mode without NODE_ENV set, unless spying is enabled
-        if (notifySpy && process.env.NODE_ENV !== "production")
-            spyReportStart(Object.assign(Object.assign({}, change), { name: this.atom.name }));
-        this.atom.reportChanged();
+        if (__DEV__ && notifySpy)
+            spyReportStart(change);
+        this.atom_.reportChanged();
         if (notify)
             notifyListeners(this, change);
-        if (notifySpy && process.env.NODE_ENV !== "production")
+        if (__DEV__ && notifySpy)
             spyReportEnd();
     }
-    notifyArraySplice(index, added, removed) {
-        const notifySpy = !this.owned && isSpyEnabled();
+    notifyArraySplice_(index, added, removed) {
+        const notifySpy = !this.owned_ && isSpyEnabled();
         const notify = hasListeners(this);
         const change = notify || notifySpy
             ? {
-                object: this.proxy,
-                type: "splice",
+                observableKind: "array",
+                object: this.proxy_,
+                debugObjectName: this.atom_.name_,
+                type: SPLICE,
                 index,
                 removed,
                 added,
@@ -198,41 +195,83 @@ class ObservableArrayAdministration {
                 addedCount: added.length
             }
             : null;
-        if (notifySpy && process.env.NODE_ENV !== "production")
-            spyReportStart(Object.assign(Object.assign({}, change), { name: this.atom.name }));
-        this.atom.reportChanged();
+        if (__DEV__ && notifySpy)
+            spyReportStart(change);
+        this.atom_.reportChanged();
         // conform: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/observe
         if (notify)
             notifyListeners(this, change);
-        if (notifySpy && process.env.NODE_ENV !== "production")
+        if (__DEV__ && notifySpy)
             spyReportEnd();
     }
+    get_(index) {
+        if (index < this.values_.length) {
+            this.atom_.reportObserved();
+            return this.dehanceValue_(this.values_[index]);
+        }
+        console.warn(__DEV__
+            ? `[mobx] Out of bounds read: ${index}`
+            : `[mobx.array] Attempt to read an array index (${index}) that is out of bounds (${this.values_.length}). Please check length first. Out of bound indices will not be tracked by MobX`);
+    }
+    set_(index, newValue) {
+        const values = this.values_;
+        if (index < values.length) {
+            // update at index in range
+            checkIfStateModificationsAreAllowed(this.atom_);
+            const oldValue = values[index];
+            if (hasInterceptors(this)) {
+                const change = interceptChange(this, {
+                    type: UPDATE,
+                    object: this.proxy_,
+                    index,
+                    newValue
+                });
+                if (!change)
+                    return;
+                newValue = change.newValue;
+            }
+            newValue = this.enhancer_(newValue, oldValue);
+            const changed = newValue !== oldValue;
+            if (changed) {
+                values[index] = newValue;
+                this.notifyArrayChildUpdate_(index, newValue, oldValue);
+            }
+        }
+        else if (index === values.length) {
+            // add a new item
+            this.spliceWithArray_(index, 0, [newValue]);
+        }
+        else {
+            // out of bounds
+            die(17, index, values.length);
+        }
+    }
 }
-const arrayExtensions = {
-    intercept(handler) {
-        return this[$mobx].intercept(handler);
-    },
-    observe(listener, fireImmediately = false) {
-        const adm = this[$mobx];
-        return adm.observe(listener, fireImmediately);
-    },
+export function createObservableArray(initialValues, enhancer, name = "ObservableArray@" + getNextId(), owned = false) {
+    assertProxies();
+    const adm = new ObservableArrayAdministration(name, enhancer, owned, false);
+    addHiddenFinalProp(adm.values_, $mobx, adm);
+    const proxy = new Proxy(adm.values_, arrayTraps);
+    adm.proxy_ = proxy;
+    if (initialValues && initialValues.length) {
+        const prev = allowStateChangesStart(true);
+        adm.spliceWithArray_(0, 0, initialValues);
+        allowStateChangesEnd(prev);
+    }
+    return proxy;
+}
+// eslint-disable-next-line
+export var arrayExtensions = {
     clear() {
         return this.splice(0);
     },
     replace(newItems) {
         const adm = this[$mobx];
-        return adm.spliceWithArray(0, adm.values.length, newItems);
+        return adm.spliceWithArray_(0, adm.values_.length, newItems);
     },
-    /**
-     * Converts this array back to a (shallow) javascript structure.
-     * For a deep clone use mobx.toJS
-     */
-    toJS() {
-        return this.slice();
-    },
+    // Used by JSON.stringify
     toJSON() {
-        // Used by JSON.stringify
-        return this.toJS();
+        return this.slice();
     },
     /*
      * functions that do alter the internal structure of the array, (based on lib.es6.d.ts)
@@ -246,129 +285,126 @@ const arrayExtensions = {
             case 0:
                 return [];
             case 1:
-                return adm.spliceWithArray(index);
+                return adm.spliceWithArray_(index);
             case 2:
-                return adm.spliceWithArray(index, deleteCount);
+                return adm.spliceWithArray_(index, deleteCount);
         }
-        return adm.spliceWithArray(index, deleteCount, newItems);
+        return adm.spliceWithArray_(index, deleteCount, newItems);
     },
     spliceWithArray(index, deleteCount, newItems) {
-        const adm = this[$mobx];
-        return adm.spliceWithArray(index, deleteCount, newItems);
+        return this[$mobx].spliceWithArray_(index, deleteCount, newItems);
     },
     push(...items) {
         const adm = this[$mobx];
-        adm.spliceWithArray(adm.values.length, 0, items);
-        return adm.values.length;
+        adm.spliceWithArray_(adm.values_.length, 0, items);
+        return adm.values_.length;
     },
     pop() {
-        return this.splice(Math.max(this[$mobx].values.length - 1, 0), 1)[0];
+        return this.splice(Math.max(this[$mobx].values_.length - 1, 0), 1)[0];
     },
     shift() {
         return this.splice(0, 1)[0];
     },
     unshift(...items) {
         const adm = this[$mobx];
-        adm.spliceWithArray(0, 0, items);
-        return adm.values.length;
+        adm.spliceWithArray_(0, 0, items);
+        return adm.values_.length;
     },
     reverse() {
         // reverse by default mutates in place before returning the result
         // which makes it both a 'derivation' and a 'mutation'.
-        // so we deviate from the default and just make it an dervitation
-        if (process.env.NODE_ENV !== "production") {
-            console.warn("[mobx] `observableArray.reverse()` will not update the array in place. Use `observableArray.slice().reverse()` to suppress this warning and perform the operation on a copy, or `observableArray.replace(observableArray.slice().reverse())` to reverse & update in place");
+        if (globalState.trackingDerivation) {
+            die(37, "reverse");
         }
-        const clone = this.slice();
-        return clone.reverse.apply(clone, arguments);
+        this.replace(this.slice().reverse());
+        return this;
     },
-    sort(compareFn) {
+    sort() {
         // sort by default mutates in place before returning the result
         // which goes against all good practices. Let's not change the array in place!
-        if (process.env.NODE_ENV !== "production") {
-            console.warn("[mobx] `observableArray.sort()` will not update the array in place. Use `observableArray.slice().sort()` to suppress this warning and perform the operation on a copy, or `observableArray.replace(observableArray.slice().sort())` to sort & update in place");
+        if (globalState.trackingDerivation) {
+            die(37, "sort");
         }
-        const clone = this.slice();
-        return clone.sort.apply(clone, arguments);
+        const copy = this.slice();
+        copy.sort.apply(copy, arguments);
+        this.replace(copy);
+        return this;
     },
     remove(value) {
         const adm = this[$mobx];
-        const idx = adm.dehanceValues(adm.values).indexOf(value);
+        const idx = adm.dehanceValues_(adm.values_).indexOf(value);
         if (idx > -1) {
             this.splice(idx, 1);
             return true;
         }
         return false;
-    },
-    get(index) {
-        const adm = this[$mobx];
-        if (adm) {
-            if (index < adm.values.length) {
-                adm.atom.reportObserved();
-                return adm.dehanceValue(adm.values[index]);
-            }
-            console.warn(`[mobx.array] Attempt to read an array index (${index}) that is out of bounds (${adm.values.length}). Please check length first. Out of bound indices will not be tracked by MobX`);
-        }
-        return undefined;
-    },
-    set(index, newValue) {
-        const adm = this[$mobx];
-        const values = adm.values;
-        if (index < values.length) {
-            // update at index in range
-            checkIfStateModificationsAreAllowed(adm.atom);
-            const oldValue = values[index];
-            if (hasInterceptors(adm)) {
-                const change = interceptChange(adm, {
-                    type: "update",
-                    object: adm.proxy,
-                    index,
-                    newValue
-                });
-                if (!change)
-                    return;
-                newValue = change.newValue;
-            }
-            newValue = adm.enhancer(newValue, oldValue);
-            const changed = newValue !== oldValue;
-            if (changed) {
-                values[index] = newValue;
-                adm.notifyArrayChildUpdate(index, newValue, oldValue);
-            }
-        }
-        else if (index === values.length) {
-            // add a new item
-            adm.spliceWithArray(index, 0, [newValue]);
-        }
-        else {
-            // out of bounds
-            throw new Error(`[mobx.array] Index out of bounds, ${index} is larger than ${values.length}`);
-        }
     }
 };
-[
-    "concat",
-    "every",
-    "filter",
-    "forEach",
-    "indexOf",
-    "join",
-    "lastIndexOf",
-    "map",
-    "reduce",
-    "reduceRight",
-    "slice",
-    "some",
-    "toString",
-    "toLocaleString"
-].forEach(funcName => {
-    arrayExtensions[funcName] = function () {
+/**
+ * Wrap function from prototype
+ * Without this, everything works as well, but this works
+ * faster as everything works on unproxied values
+ */
+addArrayExtension("concat", simpleFunc);
+addArrayExtension("flat", simpleFunc);
+addArrayExtension("includes", simpleFunc);
+addArrayExtension("indexOf", simpleFunc);
+addArrayExtension("join", simpleFunc);
+addArrayExtension("lastIndexOf", simpleFunc);
+addArrayExtension("slice", simpleFunc);
+addArrayExtension("toString", simpleFunc);
+addArrayExtension("toLocaleString", simpleFunc);
+// map
+addArrayExtension("every", mapLikeFunc);
+addArrayExtension("filter", mapLikeFunc);
+addArrayExtension("find", mapLikeFunc);
+addArrayExtension("findIndex", mapLikeFunc);
+addArrayExtension("flatMap", mapLikeFunc);
+addArrayExtension("forEach", mapLikeFunc);
+addArrayExtension("map", mapLikeFunc);
+addArrayExtension("some", mapLikeFunc);
+// reduce
+addArrayExtension("reduce", reduceLikeFunc);
+addArrayExtension("reduceRight", reduceLikeFunc);
+function addArrayExtension(funcName, funcFactory) {
+    if (typeof Array.prototype[funcName] === "function") {
+        arrayExtensions[funcName] = funcFactory(funcName);
+    }
+}
+// Report and delegate to dehanced array
+function simpleFunc(funcName) {
+    return function () {
         const adm = this[$mobx];
-        adm.atom.reportObserved();
-        const res = adm.dehanceValues(adm.values);
-        return res[funcName].apply(res, arguments);
+        adm.atom_.reportObserved();
+        const dehancedValues = adm.dehanceValues_(adm.values_);
+        return dehancedValues[funcName].apply(dehancedValues, arguments);
     };
-});
+}
+// Make sure callbacks recieve correct array arg #2326
+function mapLikeFunc(funcName) {
+    return function (callback, thisArg) {
+        const adm = this[$mobx];
+        adm.atom_.reportObserved();
+        const dehancedValues = adm.dehanceValues_(adm.values_);
+        return dehancedValues[funcName]((element, index) => {
+            return callback.call(thisArg, element, index, this);
+        });
+    };
+}
+// Make sure callbacks recieve correct array arg #2326
+function reduceLikeFunc(funcName) {
+    return function () {
+        const adm = this[$mobx];
+        adm.atom_.reportObserved();
+        const dehancedValues = adm.dehanceValues_(adm.values_);
+        // #2432 - reduce behavior depends on arguments.length
+        const callback = arguments[0];
+        arguments[0] = (accumulator, currentValue, index) => {
+            return callback(accumulator, currentValue, index, this);
+        };
+        return dehancedValues[funcName].apply(dehancedValues, arguments);
+    };
+}
 const isObservableArrayAdministration = createInstanceofPredicate("ObservableArrayAdministration", ObservableArrayAdministration);
 export function isObservableArray(thing) {
     return isObject(thing) && isObservableArrayAdministration(thing[$mobx]);

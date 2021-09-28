@@ -1,22 +1,21 @@
 var _a;
-import { $mobx, createAtom, deepEnhancer, getNextId, isSpyEnabled, hasListeners, invariant, registerListener, fail, spyReportStart, notifyListeners, spyReportEnd, createInstanceofPredicate, hasInterceptors, interceptChange, registerInterceptor, checkIfStateModificationsAreAllowed, untracked, makeIterable, transaction, isES6Set } from "../internal";
+import { $mobx, createAtom, deepEnhancer, getNextId, isSpyEnabled, hasListeners, registerListener, spyReportStart, notifyListeners, spyReportEnd, createInstanceofPredicate, hasInterceptors, interceptChange, registerInterceptor, checkIfStateModificationsAreAllowed, untracked, makeIterable, transaction, isES6Set, DELETE, ADD, die, isFunction } from "../internal";
 const ObservableSetMarker = {};
 export class ObservableSet {
-    constructor(initialData, enhancer = deepEnhancer, name = "ObservableSet@" + getNextId()) {
-        this.name = name;
+    constructor(initialData, enhancer = deepEnhancer, name_ = "ObservableSet@" + getNextId()) {
+        this.name_ = name_;
         this[_a] = ObservableSetMarker;
-        this._data = new Set();
-        this._atom = createAtom(this.name);
-        this[Symbol.toStringTag] = "Set";
-        if (typeof Set !== "function") {
-            throw new Error("mobx.set requires Set polyfill for the current browser. Check babel-polyfill or core-js/es6/set.js");
+        this.data_ = new Set();
+        if (!isFunction(Set)) {
+            die(22);
         }
-        this.enhancer = (newV, oldV) => enhancer(newV, oldV, name);
+        this.atom_ = createAtom(this.name_);
+        this.enhancer_ = (newV, oldV) => enhancer(newV, oldV, name_);
         if (initialData) {
             this.replace(initialData);
         }
     }
-    dehanceValue(value) {
+    dehanceValue_(value) {
         if (this.dehancer !== undefined) {
             return this.dehancer(value);
         }
@@ -25,7 +24,7 @@ export class ObservableSet {
     clear() {
         transaction(() => {
             untracked(() => {
-                for (const value of this._data.values())
+                for (const value of this.data_.values())
                     this.delete(value);
             });
         });
@@ -36,41 +35,43 @@ export class ObservableSet {
         }
     }
     get size() {
-        this._atom.reportObserved();
-        return this._data.size;
+        this.atom_.reportObserved();
+        return this.data_.size;
     }
     add(value) {
-        checkIfStateModificationsAreAllowed(this._atom);
+        checkIfStateModificationsAreAllowed(this.atom_);
         if (hasInterceptors(this)) {
             const change = interceptChange(this, {
-                type: "add",
+                type: ADD,
                 object: this,
                 newValue: value
             });
             if (!change)
                 return this;
-            // TODO: ideally, value = change.value would be done here, so that values can be
+            // ideally, value = change.value would be done here, so that values can be
             // changed by interceptor. Same applies for other Set and Map api's.
         }
         if (!this.has(value)) {
             transaction(() => {
-                this._data.add(this.enhancer(value, undefined));
-                this._atom.reportChanged();
+                this.data_.add(this.enhancer_(value, undefined));
+                this.atom_.reportChanged();
             });
-            const notifySpy = isSpyEnabled();
+            const notifySpy = __DEV__ && isSpyEnabled();
             const notify = hasListeners(this);
             const change = notify || notifySpy
                 ? {
-                    type: "add",
+                    observableKind: "set",
+                    debugObjectName: this.name_,
+                    type: ADD,
                     object: this,
                     newValue: value
                 }
                 : null;
-            if (notifySpy && process.env.NODE_ENV !== "production")
+            if (notifySpy && __DEV__)
                 spyReportStart(change);
             if (notify)
                 notifyListeners(this, change);
-            if (notifySpy && process.env.NODE_ENV !== "production")
+            if (notifySpy && __DEV__)
                 spyReportEnd();
         }
         return this;
@@ -78,7 +79,7 @@ export class ObservableSet {
     delete(value) {
         if (hasInterceptors(this)) {
             const change = interceptChange(this, {
-                type: "delete",
+                type: DELETE,
                 object: this,
                 oldValue: value
             });
@@ -86,32 +87,34 @@ export class ObservableSet {
                 return false;
         }
         if (this.has(value)) {
-            const notifySpy = isSpyEnabled();
+            const notifySpy = __DEV__ && isSpyEnabled();
             const notify = hasListeners(this);
             const change = notify || notifySpy
                 ? {
-                    type: "delete",
+                    observableKind: "set",
+                    debugObjectName: this.name_,
+                    type: DELETE,
                     object: this,
                     oldValue: value
                 }
                 : null;
-            if (notifySpy && process.env.NODE_ENV !== "production")
-                spyReportStart(Object.assign(Object.assign({}, change), { name: this.name }));
+            if (notifySpy && __DEV__)
+                spyReportStart(change);
             transaction(() => {
-                this._atom.reportChanged();
-                this._data.delete(value);
+                this.atom_.reportChanged();
+                this.data_.delete(value);
             });
             if (notify)
                 notifyListeners(this, change);
-            if (notifySpy && process.env.NODE_ENV !== "production")
+            if (notifySpy && __DEV__)
                 spyReportEnd();
             return true;
         }
         return false;
     }
     has(value) {
-        this._atom.reportObserved();
-        return this._data.has(this.dehanceValue(value));
+        this.atom_.reportObserved();
+        return this.data_.has(this.dehanceValue_(value));
     }
     entries() {
         let nextIndex = 0;
@@ -131,21 +134,21 @@ export class ObservableSet {
         return this.values();
     }
     values() {
-        this._atom.reportObserved();
+        this.atom_.reportObserved();
         const self = this;
         let nextIndex = 0;
-        const observableValues = Array.from(this._data.values());
+        const observableValues = Array.from(this.data_.values());
         return makeIterable({
             next() {
                 return nextIndex < observableValues.length
-                    ? { value: self.dehanceValue(observableValues[nextIndex++]), done: false }
+                    ? { value: self.dehanceValue_(observableValues[nextIndex++]), done: false }
                     : { done: true };
             }
         });
     }
     replace(other) {
         if (isObservableSet(other)) {
-            other = other.toJS();
+            other = new Set(other);
         }
         transaction(() => {
             if (Array.isArray(other)) {
@@ -157,28 +160,32 @@ export class ObservableSet {
                 other.forEach(value => this.add(value));
             }
             else if (other !== null && other !== undefined) {
-                fail("Cannot initialize set from " + other);
+                die("Cannot initialize set from " + other);
             }
         });
         return this;
     }
-    observe(listener, fireImmediately) {
-        // TODO 'fireImmediately' can be true?
-        process.env.NODE_ENV !== "production" &&
-            invariant(fireImmediately !== true, "`observe` doesn't support fireImmediately=true in combination with sets.");
+    observe_(listener, fireImmediately) {
+        // ... 'fireImmediately' could also be true?
+        if (__DEV__ && fireImmediately === true)
+            die("`observe` doesn't support fireImmediately=true in combination with sets.");
         return registerListener(this, listener);
     }
-    intercept(handler) {
+    intercept_(handler) {
         return registerInterceptor(this, handler);
     }
-    toJS() {
-        return new Set(this);
+    toJSON() {
+        return Array.from(this);
     }
     toString() {
-        return this.name + "[ " + Array.from(this).join(", ") + " ]";
+        return "[object ObservableSet]";
     }
     [(_a = $mobx, Symbol.iterator)]() {
         return this.values();
     }
+    get [Symbol.toStringTag]() {
+        return "Set";
+    }
 }
-export const isObservableSet = createInstanceofPredicate("ObservableSet", ObservableSet);
+// eslint-disable-next-line
+export var isObservableSet = createInstanceofPredicate("ObservableSet", ObservableSet);

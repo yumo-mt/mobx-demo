@@ -1,17 +1,18 @@
-import { TraceMode, fail, getAtom, globalState } from "../internal";
+import { TraceMode, die, getAtom, globalState } from "../internal";
 export function trace(...args) {
+    if (!__DEV__)
+        die(`trace() is not available in production builds`);
     let enterBreakPoint = false;
     if (typeof args[args.length - 1] === "boolean")
         enterBreakPoint = args.pop();
     const derivation = getAtomFromArgs(args);
     if (!derivation) {
-        return fail(process.env.NODE_ENV !== "production" &&
-            `'trace(break?)' can only be used inside a tracked computed value or a Reaction. Consider passing in the computed value or reaction explicitly`);
+        return die(`'trace(break?)' can only be used inside a tracked computed value or a Reaction. Consider passing in the computed value or reaction explicitly`);
     }
-    if (derivation.isTracing === TraceMode.NONE) {
-        console.log(`[mobx.trace] '${derivation.name}' tracing enabled`);
+    if (derivation.isTracing_ === TraceMode.NONE) {
+        console.log(`[mobx.trace] '${derivation.name_}' tracing enabled`);
     }
-    derivation.isTracing = enterBreakPoint ? TraceMode.BREAK : TraceMode.LOG;
+    derivation.isTracing_ = enterBreakPoint ? TraceMode.BREAK : TraceMode.LOG;
 }
 function getAtomFromArgs(args) {
     switch (args.length) {

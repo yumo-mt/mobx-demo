@@ -1,37 +1,53 @@
-import { addHiddenProp, boundActionDecorator, createAction, executeAction, fail, invariant, namedActionDecorator } from "../internal";
-export const action = function action(arg1, arg2, arg3, arg4) {
-    // action(fn() {})
-    if (arguments.length === 1 && typeof arg1 === "function")
-        return createAction(arg1.name || "<unnamed action>", arg1);
-    // action("name", fn() {})
-    if (arguments.length === 2 && typeof arg2 === "function")
-        return createAction(arg1, arg2);
-    // @action("name") fn() {}
-    if (arguments.length === 1 && typeof arg1 === "string")
-        return namedActionDecorator(arg1);
-    // @action fn() {}
-    if (arg4 === true) {
-        // apply to instance immediately
-        addHiddenProp(arg1, arg2, createAction(arg1.name || arg2, arg3.value, this));
-    }
-    else {
-        return namedActionDecorator(arg2).apply(null, arguments);
-    }
-};
-action.bound = boundActionDecorator;
-export function runInAction(arg1, arg2) {
-    const actionName = typeof arg1 === "string" ? arg1 : arg1.name || "<unnamed action>";
-    const fn = typeof arg1 === "function" ? arg1 : arg2;
-    if (process.env.NODE_ENV !== "production") {
-        invariant(typeof fn === "function" && fn.length === 0, "`runInAction` expects a function without arguments");
-        if (typeof actionName !== "string" || !actionName)
-            fail(`actions should have valid names, got: '${actionName}'`);
-    }
-    return executeAction(actionName, fn, this, undefined);
+import { createAction, executeAction, storeAnnotation, die, isFunction, isStringish, createDecoratorAnnotation, createActionAnnotation } from "../internal";
+export const ACTION = "action";
+export const ACTION_BOUND = "action.bound";
+export const AUTOACTION = "autoAction";
+export const AUTOACTION_BOUND = "autoAction.bound";
+const DEFAULT_ACTION_NAME = "<unnamed action>";
+const actionAnnotation = createActionAnnotation(ACTION);
+const actionBoundAnnotation = createActionAnnotation(ACTION_BOUND, {
+    bound: true
+});
+const autoActionAnnotation = createActionAnnotation(AUTOACTION, {
+    autoAction: true
+});
+const autoActionBoundAnnotation = createActionAnnotation(AUTOACTION_BOUND, {
+    autoAction: true,
+    bound: true
+});
+function createActionFactory(autoAction) {
+    const res = function action(arg1, arg2) {
+        // action(fn() {})
+        if (isFunction(arg1))
+            return createAction(arg1.name || DEFAULT_ACTION_NAME, arg1, autoAction);
+        // action("name", fn() {})
+        if (isFunction(arg2))
+            return createAction(arg1, arg2, autoAction);
+        // @action
+        if (isStringish(arg2)) {
+            return storeAnnotation(arg1, arg2, autoAction ? autoActionAnnotation : actionAnnotation);
+        }
+        // action("name") & @action("name")
+        if (isStringish(arg1)) {
+            return createDecoratorAnnotation(createActionAnnotation(autoAction ? AUTOACTION : ACTION, {
+                name: arg1,
+                autoAction
+            }));
+        }
+        if (__DEV__)
+            die("Invalid arguments for `action`");
+    };
+    return res;
+}
+export const action = createActionFactory(false);
+Object.assign(action, actionAnnotation);
+export const autoAction = createActionFactory(true);
+Object.assign(autoAction, autoActionAnnotation);
+action.bound = createDecoratorAnnotation(actionBoundAnnotation);
+autoAction.bound = createDecoratorAnnotation(autoActionBoundAnnotation);
+export function runInAction(fn) {
+    return executeAction(fn.name || DEFAULT_ACTION_NAME, false, fn, this, undefined);
 }
 export function isAction(thing) {
-    return typeof thing === "function" && thing.isMobxAction === true;
-}
-export function defineBoundAction(target, propertyName, fn) {
-    addHiddenProp(target, propertyName, createAction(propertyName, fn.bind(target)));
+    return isFunction(thing) && thing.isMobxAction === true;
 }

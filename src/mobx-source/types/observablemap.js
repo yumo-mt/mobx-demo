@@ -1,42 +1,42 @@
 var _a;
-import { $mobx, ObservableValue, checkIfStateModificationsAreAllowed, createAtom, createInstanceofPredicate, deepEnhancer, fail, getMapLikeKeys, getNextId, getPlainObjectKeys, hasInterceptors, hasListeners, interceptChange, invariant, isES6Map, isPlainObject, isSpyEnabled, makeIterable, notifyListeners, referenceEnhancer, registerInterceptor, registerListener, spyReportEnd, spyReportStart, stringifyKey, transaction, untracked, onBecomeUnobserved, globalState } from "../internal";
+import { $mobx, ObservableValue, checkIfStateModificationsAreAllowed, createAtom, createInstanceofPredicate, deepEnhancer, getNextId, getPlainObjectKeys, hasInterceptors, hasListeners, interceptChange, isES6Map, isPlainObject, isSpyEnabled, makeIterable, notifyListeners, referenceEnhancer, registerInterceptor, registerListener, spyReportEnd, spyReportStart, stringifyKey, transaction, untracked, onBecomeUnobserved, globalState, die, isFunction, UPDATE } from "../internal";
 const ObservableMapMarker = {};
+export const ADD = "add";
+export const DELETE = "delete";
 // just extend Map? See also https://gist.github.com/nestharus/13b4d74f2ef4a2f4357dbd3fc23c1e54
 // But: https://github.com/mobxjs/mobx/issues/1556
 export class ObservableMap {
-    constructor(initialData, enhancer = deepEnhancer, name = "ObservableMap@" + getNextId()) {
-        this.enhancer = enhancer;
-        this.name = name;
+    constructor(initialData, enhancer_ = deepEnhancer, name_ = "ObservableMap@" + getNextId()) {
+        this.enhancer_ = enhancer_;
+        this.name_ = name_;
         this[_a] = ObservableMapMarker;
-        this._keysAtom = createAtom(`${this.name}.keys()`);
-        this[Symbol.toStringTag] = "Map";
-        if (typeof Map !== "function") {
-            throw new Error("mobx.map requires Map polyfill for the current browser. Check babel-polyfill or core-js/es6/map.js");
+        if (!isFunction(Map)) {
+            die(18);
         }
-        this._data = new Map();
-        this._hasMap = new Map();
+        this.keysAtom_ = createAtom(`${this.name_}.keys()`);
+        this.data_ = new Map();
+        this.hasMap_ = new Map();
         this.merge(initialData);
     }
-    _has(key) {
-        return this._data.has(key);
+    has_(key) {
+        return this.data_.has(key);
     }
     has(key) {
         if (!globalState.trackingDerivation)
-            return this._has(key);
-        let entry = this._hasMap.get(key);
+            return this.has_(key);
+        let entry = this.hasMap_.get(key);
         if (!entry) {
-            // todo: replace with atom (breaking change)
-            const newEntry = (entry = new ObservableValue(this._has(key), referenceEnhancer, `${this.name}.${stringifyKey(key)}?`, false));
-            this._hasMap.set(key, newEntry);
-            onBecomeUnobserved(newEntry, () => this._hasMap.delete(key));
+            const newEntry = (entry = new ObservableValue(this.has_(key), referenceEnhancer, `${this.name_}.${stringifyKey(key)}?`, false));
+            this.hasMap_.set(key, newEntry);
+            onBecomeUnobserved(newEntry, () => this.hasMap_.delete(key));
         }
         return entry.get();
     }
     set(key, value) {
-        const hasKey = this._has(key);
+        const hasKey = this.has_(key);
         if (hasInterceptors(this)) {
             const change = interceptChange(this, {
-                type: hasKey ? "update" : "add",
+                type: hasKey ? UPDATE : ADD,
                 object: this,
                 newValue: value,
                 name: key
@@ -46,148 +46,152 @@ export class ObservableMap {
             value = change.newValue;
         }
         if (hasKey) {
-            this._updateValue(key, value);
+            this.updateValue_(key, value);
         }
         else {
-            this._addValue(key, value);
+            this.addValue_(key, value);
         }
         return this;
     }
     delete(key) {
+        checkIfStateModificationsAreAllowed(this.keysAtom_);
         if (hasInterceptors(this)) {
             const change = interceptChange(this, {
-                type: "delete",
+                type: DELETE,
                 object: this,
                 name: key
             });
             if (!change)
                 return false;
         }
-        if (this._has(key)) {
+        if (this.has_(key)) {
             const notifySpy = isSpyEnabled();
             const notify = hasListeners(this);
             const change = notify || notifySpy
                 ? {
-                    type: "delete",
+                    observableKind: "map",
+                    debugObjectName: this.name_,
+                    type: DELETE,
                     object: this,
-                    oldValue: this._data.get(key).value,
+                    oldValue: this.data_.get(key).value_,
                     name: key
                 }
                 : null;
-            if (notifySpy && process.env.NODE_ENV !== "production")
-                spyReportStart(Object.assign(Object.assign({}, change), { name: this.name, key }));
+            if (__DEV__ && notifySpy)
+                spyReportStart(change);
             transaction(() => {
-                this._keysAtom.reportChanged();
-                this._updateHasMapEntry(key, false);
-                const observable = this._data.get(key);
-                observable.setNewValue(undefined);
-                this._data.delete(key);
+                this.keysAtom_.reportChanged();
+                this.updateHasMapEntry_(key, false);
+                const observable = this.data_.get(key);
+                observable.setNewValue_(undefined);
+                this.data_.delete(key);
             });
             if (notify)
                 notifyListeners(this, change);
-            if (notifySpy && process.env.NODE_ENV !== "production")
+            if (__DEV__ && notifySpy)
                 spyReportEnd();
             return true;
         }
         return false;
     }
-    _updateHasMapEntry(key, value) {
-        let entry = this._hasMap.get(key);
+    updateHasMapEntry_(key, value) {
+        let entry = this.hasMap_.get(key);
         if (entry) {
-            entry.setNewValue(value);
+            entry.setNewValue_(value);
         }
     }
-    _updateValue(key, newValue) {
-        const observable = this._data.get(key);
-        newValue = observable.prepareNewValue(newValue);
+    updateValue_(key, newValue) {
+        const observable = this.data_.get(key);
+        newValue = observable.prepareNewValue_(newValue);
         if (newValue !== globalState.UNCHANGED) {
             const notifySpy = isSpyEnabled();
             const notify = hasListeners(this);
             const change = notify || notifySpy
                 ? {
-                    type: "update",
+                    observableKind: "map",
+                    debugObjectName: this.name_,
+                    type: UPDATE,
                     object: this,
-                    oldValue: observable.value,
+                    oldValue: observable.value_,
                     name: key,
                     newValue
                 }
                 : null;
-            if (notifySpy && process.env.NODE_ENV !== "production")
-                spyReportStart(Object.assign(Object.assign({}, change), { name: this.name, key }));
-            observable.setNewValue(newValue);
+            if (__DEV__ && notifySpy)
+                spyReportStart(change);
+            observable.setNewValue_(newValue);
             if (notify)
                 notifyListeners(this, change);
-            if (notifySpy && process.env.NODE_ENV !== "production")
+            if (__DEV__ && notifySpy)
                 spyReportEnd();
         }
     }
-    _addValue(key, newValue) {
-        checkIfStateModificationsAreAllowed(this._keysAtom);
+    addValue_(key, newValue) {
+        checkIfStateModificationsAreAllowed(this.keysAtom_);
         transaction(() => {
-            const observable = new ObservableValue(newValue, this.enhancer, `${this.name}.${stringifyKey(key)}`, false);
-            this._data.set(key, observable);
-            newValue = observable.value; // value might have been changed
-            this._updateHasMapEntry(key, true);
-            this._keysAtom.reportChanged();
+            const observable = new ObservableValue(newValue, this.enhancer_, `${this.name_}.${stringifyKey(key)}`, false);
+            this.data_.set(key, observable);
+            newValue = observable.value_; // value might have been changed
+            this.updateHasMapEntry_(key, true);
+            this.keysAtom_.reportChanged();
         });
         const notifySpy = isSpyEnabled();
         const notify = hasListeners(this);
         const change = notify || notifySpy
             ? {
-                type: "add",
+                observableKind: "map",
+                debugObjectName: this.name_,
+                type: ADD,
                 object: this,
                 name: key,
                 newValue
             }
             : null;
-        if (notifySpy && process.env.NODE_ENV !== "production")
-            spyReportStart(Object.assign(Object.assign({}, change), { name: this.name, key }));
+        if (__DEV__ && notifySpy)
+            spyReportStart(change);
         if (notify)
             notifyListeners(this, change);
-        if (notifySpy && process.env.NODE_ENV !== "production")
+        if (__DEV__ && notifySpy)
             spyReportEnd();
     }
     get(key) {
         if (this.has(key))
-            return this.dehanceValue(this._data.get(key).get());
-        return this.dehanceValue(undefined);
+            return this.dehanceValue_(this.data_.get(key).get());
+        return this.dehanceValue_(undefined);
     }
-    dehanceValue(value) {
+    dehanceValue_(value) {
         if (this.dehancer !== undefined) {
             return this.dehancer(value);
         }
         return value;
     }
     keys() {
-        this._keysAtom.reportObserved();
-        return this._data.keys();
+        this.keysAtom_.reportObserved();
+        return this.data_.keys();
     }
     values() {
         const self = this;
-        let nextIndex = 0;
-        const keys = Array.from(this.keys());
+        const keys = this.keys();
         return makeIterable({
             next() {
-                return nextIndex < keys.length
-                    ? { value: self.get(keys[nextIndex++]), done: false }
-                    : { done: true };
+                const { done, value } = keys.next();
+                return {
+                    done,
+                    value: done ? undefined : self.get(value)
+                };
             }
         });
     }
     entries() {
         const self = this;
-        let nextIndex = 0;
-        const keys = Array.from(this.keys());
+        const keys = this.keys();
         return makeIterable({
-            next: function () {
-                if (nextIndex < keys.length) {
-                    const key = keys[nextIndex++];
-                    return {
-                        value: [key, self.get(key)],
-                        done: false
-                    };
-                }
-                return { done: true };
+            next() {
+                const { done, value } = keys.next();
+                return {
+                    done,
+                    value: done ? undefined : [value, self.get(value)]
+                };
             }
         });
     }
@@ -201,20 +205,20 @@ export class ObservableMap {
     /** Merge another object into this object, returns this. */
     merge(other) {
         if (isObservableMap(other)) {
-            other = other.toJS();
+            other = new Map(other);
         }
         transaction(() => {
             if (isPlainObject(other))
-                getPlainObjectKeys(other).forEach(key => this.set(key, other[key]));
+                getPlainObjectKeys(other).forEach((key) => this.set(key, other[key]));
             else if (Array.isArray(other))
                 other.forEach(([key, value]) => this.set(key, value));
             else if (isES6Map(other)) {
                 if (other.constructor !== Map)
-                    fail("Cannot initialize from classes that inherit from Map: " + other.constructor.name); // prettier-ignore
+                    die(19, other);
                 other.forEach((value, key) => this.set(key, value));
             }
             else if (other !== null && other !== undefined)
-                fail("Cannot initialize map from " + other);
+                die(20, other);
         });
         return this;
     }
@@ -227,67 +231,128 @@ export class ObservableMap {
         });
     }
     replace(values) {
+        // Implementation requirements:
+        // - respect ordering of replacement map
+        // - allow interceptors to run and potentially prevent individual operations
+        // - don't recreate observables that already exist in original map (so we don't destroy existing subscriptions)
+        // - don't _keysAtom.reportChanged if the keys of resulting map are indentical (order matters!)
+        // - note that result map may differ from replacement map due to the interceptors
         transaction(() => {
-            // grab all the keys that are present in the new map but not present in the current map
-            // and delete them from the map, then merge the new map
-            // this will cause reactions only on changed values
-            const newKeys = getMapLikeKeys(values);
-            const oldKeys = Array.from(this.keys());
-            const missingKeys = oldKeys.filter(k => newKeys.indexOf(k) === -1);
-            missingKeys.forEach(k => this.delete(k));
-            this.merge(values);
+            // Convert to map so we can do quick key lookups
+            const replacementMap = convertToMap(values);
+            const orderedData = new Map();
+            // Used for optimization
+            let keysReportChangedCalled = false;
+            // Delete keys that don't exist in replacement map
+            // if the key deletion is prevented by interceptor
+            // add entry at the beginning of the result map
+            for (const key of this.data_.keys()) {
+                // Concurrently iterating/deleting keys
+                // iterator should handle this correctly
+                if (!replacementMap.has(key)) {
+                    const deleted = this.delete(key);
+                    // Was the key removed?
+                    if (deleted) {
+                        // _keysAtom.reportChanged() was already called
+                        keysReportChangedCalled = true;
+                    }
+                    else {
+                        // Delete prevented by interceptor
+                        const value = this.data_.get(key);
+                        orderedData.set(key, value);
+                    }
+                }
+            }
+            // Merge entries
+            for (const [key, value] of replacementMap.entries()) {
+                // We will want to know whether a new key is added
+                const keyExisted = this.data_.has(key);
+                // Add or update value
+                this.set(key, value);
+                // The addition could have been prevent by interceptor
+                if (this.data_.has(key)) {
+                    // The update could have been prevented by interceptor
+                    // and also we want to preserve existing values
+                    // so use value from _data map (instead of replacement map)
+                    const value = this.data_.get(key);
+                    orderedData.set(key, value);
+                    // Was a new key added?
+                    if (!keyExisted) {
+                        // _keysAtom.reportChanged() was already called
+                        keysReportChangedCalled = true;
+                    }
+                }
+            }
+            // Check for possible key order change
+            if (!keysReportChangedCalled) {
+                if (this.data_.size !== orderedData.size) {
+                    // If size differs, keys are definitely modified
+                    this.keysAtom_.reportChanged();
+                }
+                else {
+                    const iter1 = this.data_.keys();
+                    const iter2 = orderedData.keys();
+                    let next1 = iter1.next();
+                    let next2 = iter2.next();
+                    while (!next1.done) {
+                        if (next1.value !== next2.value) {
+                            this.keysAtom_.reportChanged();
+                            break;
+                        }
+                        next1 = iter1.next();
+                        next2 = iter2.next();
+                    }
+                }
+            }
+            // Use correctly ordered map
+            this.data_ = orderedData;
         });
         return this;
     }
     get size() {
-        this._keysAtom.reportObserved();
-        return this._data.size;
-    }
-    /**
-     * Returns a plain object that represents this map.
-     * Note that all the keys being stringified.
-     * If there are duplicating keys after converting them to strings, behaviour is undetermined.
-     */
-    toPOJO() {
-        const res = {};
-        for (const [key, value] of this) {
-            // We lie about symbol key types due to https://github.com/Microsoft/TypeScript/issues/1863
-            res[typeof key === "symbol" ? key : stringifyKey(key)] = value;
-        }
-        return res;
-    }
-    /**
-     * Returns a shallow non observable object clone of this map.
-     * Note that the values migth still be observable. For a deep clone use mobx.toJS.
-     */
-    toJS() {
-        return new Map(this);
-    }
-    toJSON() {
-        // Used by JSON.stringify
-        return this.toPOJO();
+        this.keysAtom_.reportObserved();
+        return this.data_.size;
     }
     toString() {
-        return (this.name +
-            "[{ " +
-            Array.from(this.keys())
-                .map(key => `${stringifyKey(key)}: ${"" + this.get(key)}`)
-                .join(", ") +
-            " }]");
+        return "[object ObservableMap]";
+    }
+    toJSON() {
+        return Array.from(this);
+    }
+    get [Symbol.toStringTag]() {
+        return "Map";
     }
     /**
      * Observes this object. Triggers for the events 'add', 'update' and 'delete'.
      * See: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/observe
      * for callback details
      */
-    observe(listener, fireImmediately) {
-        process.env.NODE_ENV !== "production" &&
-            invariant(fireImmediately !== true, "`observe` doesn't support fireImmediately=true in combination with maps.");
+    observe_(listener, fireImmediately) {
+        if (__DEV__ && fireImmediately === true)
+            die("`observe` doesn't support fireImmediately=true in combination with maps.");
         return registerListener(this, listener);
     }
-    intercept(handler) {
+    intercept_(handler) {
         return registerInterceptor(this, handler);
     }
 }
-/* 'var' fixes small-build issue */
-export const isObservableMap = createInstanceofPredicate("ObservableMap", ObservableMap);
+// eslint-disable-next-line
+export var isObservableMap = createInstanceofPredicate("ObservableMap", ObservableMap);
+function convertToMap(dataStructure) {
+    if (isES6Map(dataStructure) || isObservableMap(dataStructure)) {
+        return dataStructure;
+    }
+    else if (Array.isArray(dataStructure)) {
+        return new Map(dataStructure);
+    }
+    else if (isPlainObject(dataStructure)) {
+        const map = new Map();
+        for (const key in dataStructure) {
+            map.set(key, dataStructure[key]);
+        }
+        return map;
+    }
+    else {
+        return die(21, dataStructure);
+    }
+}
