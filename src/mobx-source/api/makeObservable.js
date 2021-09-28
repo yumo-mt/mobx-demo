@@ -14,7 +14,7 @@ export function makeObservable(target, annotations, options) {
     return target;
 }
 export function makeAutoObservable(target, overrides, options) {
-    if (__DEV__) {
+    if (window.__DEV__) {
         if (!isPlainObject(target) && !isPlainObject(Object.getPrototypeOf(target)))
             die(`'makeAutoObservable' can only be used for classes that don't have a superclass`);
         if (isObservableObject(target))

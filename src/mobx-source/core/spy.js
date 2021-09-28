@@ -1,9 +1,9 @@
 import { globalState, once } from "../internal";
 export function isSpyEnabled() {
-    return __DEV__ && !!globalState.spyListeners.length;
+    return window.__DEV__ && !!globalState.spyListeners.length;
 }
 export function spyReport(event) {
-    if (!__DEV__)
+    if (!window.__DEV__)
         return; // dead code elimination can do the rest
     if (!globalState.spyListeners.length)
         return;
@@ -12,14 +12,14 @@ export function spyReport(event) {
         listeners[i](event);
 }
 export function spyReportStart(event) {
-    if (!__DEV__)
+    if (!window.__DEV__)
         return;
     const change = Object.assign(Object.assign({}, event), { spyReportStart: true });
     spyReport(change);
 }
 const END_EVENT = { type: "report-end", spyReportEnd: true };
 export function spyReportEnd(change) {
-    if (!__DEV__)
+    if (!window.__DEV__)
         return;
     if (change)
         spyReport(Object.assign(Object.assign({}, change), { type: "report-end", spyReportEnd: true }));
@@ -27,7 +27,7 @@ export function spyReportEnd(change) {
         spyReport(END_EVENT);
 }
 export function spy(listener) {
-    if (!__DEV__) {
+    if (!window.__DEV__) {
         console.warn(`[mobx.spy] Is a no-op in production builds`);
         return function () { };
     }

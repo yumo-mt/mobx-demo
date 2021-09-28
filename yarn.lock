@@ -5464,17 +5464,22 @@ mkdirp@^0.5.1, mkdirp@^0.5.3, mkdirp@^0.5.5, mkdirp@~0.5.1:
   dependencies:
     minimist "^1.2.5"
 
-mobx-react-lite@^3.2.0, mobx-react-lite@^3.2.1:
+mobx-react-lite@^1.4.2:
+  version "1.5.2"
+  resolved "http://r.npm.sankuai.com/mobx-react-lite/download/mobx-react-lite-1.5.2.tgz#c4395b0568b9cb16f07669d8869cc4efa1b8656d"
+  integrity sha1-xDlbBWi5yxbwdmnYhpzE76G4ZW0=
+
+mobx-react-lite@^3.2.1:
   version "3.2.1"
   resolved "http://r.npm.sankuai.com/mobx-react-lite/download/mobx-react-lite-3.2.1.tgz#c549a3722f1eae51a78b12f839311614d5689c58"
   integrity sha1-xUmjci8erlGnixL4OTEWFNVonFg=
 
-mobx-react@7.x:
-  version "7.2.0"
-  resolved "http://r.npm.sankuai.com/mobx-react/download/mobx-react-7.2.0.tgz#241e925e963bb83a31d269f65f9f379e37ecbaeb"
-  integrity sha1-JB6SXpY7uDox0mn2X583njfsuus=
+mobx-react@6.1.x:
+  version "6.1.8"
+  resolved "http://r.npm.sankuai.com/mobx-react/download/mobx-react-6.1.8.tgz#5b9a3950463d58c154dda2c94d16d48ed8fcb02e"
+  integrity sha1-W5o5UEY9WMFU3aLJTRbUjtj8sC4=
   dependencies:
-    mobx-react-lite "^3.2.0"
+    mobx-react-lite "^1.4.2"
 
 move-concurrently@^1.0.1:
   version "1.0.1"

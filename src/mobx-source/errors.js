@@ -61,9 +61,9 @@ const niceErrors = {
         return `[mobx] \`observableArray.${method}()\` mutates the array in-place, which is not allowed inside a derivation. Use \`array.slice().${method}()\` instead`;
     }
 };
-const errors = __DEV__ ? niceErrors : {};
+const errors = window.window.__DEV__ ? niceErrors : {};
 export function die(error, ...args) {
-    if (__DEV__) {
+    if (window.__DEV__) {
         let e = typeof error === "string" ? error : errors[error];
         if (typeof e === "function")
             e = e.apply(null, args);

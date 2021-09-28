@@ -35,7 +35,7 @@ export function configure(options) {
             globalState[key] = !!options[key];
     });
     globalState.allowStateReads = !globalState.observableRequiresReaction;
-    if (__DEV__ && globalState.disableErrorBoundaries === true) {
+    if (window.__DEV__ && globalState.disableErrorBoundaries === true) {
         console.warn("WARNING: Debug feature only. MobX will NOT recover from errors when `disableErrorBoundaries` is enabled.");
     }
     if (options.reactionScheduler) {

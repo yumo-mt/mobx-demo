@@ -1,5 +1,5 @@
-import React from 'react';
-import store from './store';
+import React,{useState} from 'react';
+import Store from './store';
 import { observer } from 'mobx-react'
 
 
@@ -9,9 +9,13 @@ const PageA = observer(()=>{
   const [store] = useState(()=>{
   	return new Store;
   })
+  const change = ()=>{
+      store.job = 'python工程师'
+  }
   return (
   	<>
-     <p>{store.model.a}</p>
+     <p>{store.job}</p>
+     <button onClick={change}>改变</button>
     </>
   )
 })

@@ -77,7 +77,7 @@ export class ObservableMap {
                     name: key
                 }
                 : null;
-            if (__DEV__ && notifySpy)
+            if (window.__DEV__ && notifySpy)
                 spyReportStart(change);
             transaction(() => {
                 this.keysAtom_.reportChanged();
@@ -88,7 +88,7 @@ export class ObservableMap {
             });
             if (notify)
                 notifyListeners(this, change);
-            if (__DEV__ && notifySpy)
+            if (window.__DEV__ && notifySpy)
                 spyReportEnd();
             return true;
         }
@@ -117,12 +117,12 @@ export class ObservableMap {
                     newValue
                 }
                 : null;
-            if (__DEV__ && notifySpy)
+            if (window.__DEV__ && notifySpy)
                 spyReportStart(change);
             observable.setNewValue_(newValue);
             if (notify)
                 notifyListeners(this, change);
-            if (__DEV__ && notifySpy)
+            if (window.__DEV__ && notifySpy)
                 spyReportEnd();
         }
     }
@@ -147,11 +147,11 @@ export class ObservableMap {
                 newValue
             }
             : null;
-        if (__DEV__ && notifySpy)
+        if (window.__DEV__ && notifySpy)
             spyReportStart(change);
         if (notify)
             notifyListeners(this, change);
-        if (__DEV__ && notifySpy)
+        if (window.__DEV__ && notifySpy)
             spyReportEnd();
     }
     get(key) {
@@ -328,7 +328,7 @@ export class ObservableMap {
      * for callback details
      */
     observe_(listener, fireImmediately) {
-        if (__DEV__ && fireImmediately === true)
+        if (window.__DEV__ && fireImmediately === true)
             die("`observe` doesn't support fireImmediately=true in combination with maps.");
         return registerListener(this, listener);
     }

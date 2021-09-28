@@ -49,7 +49,7 @@ function toJSHelper(source, __alreadySeen) {
  * Basically, a deep clone, so that no reactive property will exist anymore.
  */
 export function toJS(source, options) {
-    if (__DEV__ && options)
+    if (window.__DEV__ && options)
         die("toJS no longer supports options");
     return toJSHelper(source, new Map());
 }

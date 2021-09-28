@@ -10,12 +10,12 @@ export function isOverride(annotation) {
 }
 function make_(adm, key) {
     // Must not be plain object
-    if (__DEV__ && adm.isPlainObject_) {
+    if (window.__DEV__ && adm.isPlainObject_) {
         die(`Cannot apply '${this.annotationType_}' to '${adm.name_}.${key.toString()}':` +
             `\n'${this.annotationType_}' cannot be used on plain objects.`);
     }
     // Must override something
-    if (__DEV__ && !hasProp(adm.appliedAnnotations_, key)) {
+    if (window.__DEV__ && !hasProp(adm.appliedAnnotations_, key)) {
         die(`'${adm.name_}.${key.toString()}' is annotated with '${this.annotationType_}', ` +
             `but no such annotated member was found on prototype.`);
     }

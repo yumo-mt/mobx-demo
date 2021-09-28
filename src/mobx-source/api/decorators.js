@@ -20,7 +20,7 @@ export function storeAnnotation(prototype, key, annotation) {
         addHiddenProp(prototype, storedAnnotationsSymbol, Object.assign({}, prototype[storedAnnotationsSymbol]));
     }
     // @override must override something
-    if (__DEV__ && isOverride(annotation) && !hasProp(prototype[storedAnnotationsSymbol], key)) {
+    if (window.__DEV__ && isOverride(annotation) && !hasProp(prototype[storedAnnotationsSymbol], key)) {
         const fieldName = `${prototype.constructor.name}.prototype.${key.toString()}`;
         die(`'${fieldName}' is decorated with 'override', ` +
             `but no such decorated member was found on prototype.`);
@@ -33,7 +33,7 @@ export function storeAnnotation(prototype, key, annotation) {
     }
 }
 function assertNotDecorated(prototype, annotation, key) {
-    if (__DEV__ && !isOverride(annotation) && hasProp(prototype[storedAnnotationsSymbol], key)) {
+    if (window.__DEV__ && !isOverride(annotation) && hasProp(prototype[storedAnnotationsSymbol], key)) {
         const fieldName = `${prototype.constructor.name}.prototype.${key.toString()}`;
         const currentAnnotationType = prototype[storedAnnotationsSymbol][key].annotationType_;
         const requestedAnnotationType = annotation.annotationType_;
@@ -48,7 +48,7 @@ function assertNotDecorated(prototype, annotation, key) {
  */
 export function collectStoredAnnotations(target) {
     if (!hasProp(target, storedAnnotationsSymbol)) {
-        if (__DEV__ && !target[storedAnnotationsSymbol]) {
+        if (window.__DEV__ && !target[storedAnnotationsSymbol]) {
             die(`No annotations were passed to makeObservable, but no decorated members have been found either`);
         }
         // We need a copy as we will remove annotation from the list once it's applied.

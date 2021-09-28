@@ -11,12 +11,12 @@ export function _isComputed(value, property) {
     return isComputedValue(value);
 }
 export function isComputed(value) {
-    if (__DEV__ && arguments.length > 1)
+    if (window.__DEV__ && arguments.length > 1)
         return die(`isComputed expects only 1 argument. Use isComputedProp to inspect the observability of a property`);
     return _isComputed(value);
 }
 export function isComputedProp(value, propName) {
-    if (__DEV__ && !isStringish(propName))
+    if (window.__DEV__ && !isStringish(propName))
         return die(`isComputed expected a property name as second argument`);
     return _isComputed(value, propName);
 }

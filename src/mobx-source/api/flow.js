@@ -15,7 +15,7 @@ export const flow = Object.assign(function flow(arg1, arg2) {
         return storeAnnotation(arg1, arg2, flowAnnotation);
     }
     // flow(fn)
-    if (__DEV__ && arguments.length !== 1)
+    if (window.__DEV__ && arguments.length !== 1)
         die(`Flow expects single argument with generator function`);
     const generator = arg1;
     const name = generator.name || "<unnamed flow>";

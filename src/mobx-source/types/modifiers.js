@@ -27,7 +27,7 @@ export function shallowEnhancer(v, _, name) {
         return observable.map(v, { name, deep: false });
     if (isES6Set(v))
         return observable.set(v, { name, deep: false });
-    if (__DEV__)
+    if (window.__DEV__)
         die("The shallow modifier / decorator can only used in combination with arrays, objects, maps and sets");
 }
 export function referenceEnhancer(newValue) {
@@ -35,7 +35,7 @@ export function referenceEnhancer(newValue) {
     return newValue;
 }
 export function refStructEnhancer(v, oldValue) {
-    if (__DEV__ && isObservable(v))
+    if (window.__DEV__ && isObservable(v))
         die(`observable.struct should not be used with observable values`);
     if (deepEqual(v, oldValue))
         return oldValue;

@@ -95,7 +95,7 @@ export function isComputingDerivation() {
     return globalState.trackingDerivation !== null; // filter out actions inside computations
 }
 export function checkIfStateModificationsAreAllowed(atom) {
-    if (!__DEV__) {
+    if (!window.__DEV__) {
         return;
     }
     const hasObservers = atom.observers_.size > 0;
@@ -108,7 +108,7 @@ export function checkIfStateModificationsAreAllowed(atom) {
             atom.name_);
 }
 export function checkIfStateReadsAreAllowed(observable) {
-    if (__DEV__ && !globalState.allowStateReads && globalState.observableRequiresReaction) {
+    if (window.__DEV__ && !globalState.allowStateReads && globalState.observableRequiresReaction) {
         console.warn(`[mobx] Observable ${observable.name_} being read outside a reactive context`);
     }
 }
@@ -148,7 +148,7 @@ export function trackDerivedFunction(derivation, f, context) {
     return result;
 }
 function warnAboutDerivationWithoutDependencies(derivation) {
-    if (!__DEV__)
+    if (!window.__DEV__)
         return;
     if (derivation.observing_.length !== 0)
         return;

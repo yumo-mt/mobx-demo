@@ -17,13 +17,13 @@ export class ObservableObjectAdministration {
         this.keysAtom_ = new Atom(name_ + ".keys");
         // Optimization: we use this frequently
         this.isPlainObject_ = isPlainObject(this.target_);
-        if (__DEV__ && !isAnnotation(this.defaultAnnotation_)) {
+        if (window.__DEV__ && !isAnnotation(this.defaultAnnotation_)) {
             die(`defaultAnnotation must be valid annotation`);
         }
-        if (__DEV__ && typeof this.autoBind_ !== "boolean") {
+        if (window.__DEV__ && typeof this.autoBind_ !== "boolean") {
             die(`autoBind must be boolean`);
         }
-        if (__DEV__) {
+        if (window.__DEV__) {
             // Prepare structure for tracking which fields were already annotated
             this.appliedAnnotations_ = {};
         }
@@ -53,7 +53,7 @@ export class ObservableObjectAdministration {
         // notify spy & observers
         if (newValue !== globalState.UNCHANGED) {
             const notify = hasListeners(this);
-            const notifySpy = __DEV__ && isSpyEnabled();
+            const notifySpy = window.__DEV__ && isSpyEnabled();
             const change = notify || notifySpy
                 ? {
                     type: UPDATE,
@@ -65,12 +65,12 @@ export class ObservableObjectAdministration {
                     newValue
                 }
                 : null;
-            if (__DEV__ && notifySpy)
+            if (window.__DEV__ && notifySpy)
                 spyReportStart(change);
             observable.setNewValue_(newValue);
             if (notify)
                 notifyListeners(this, change);
-            if (__DEV__ && notifySpy)
+            if (window.__DEV__ && notifySpy)
                 spyReportEnd();
         }
         return true;
@@ -362,7 +362,7 @@ export class ObservableObjectAdministration {
         try {
             startBatch();
             const notify = hasListeners(this);
-            const notifySpy = __DEV__ && isSpyEnabled();
+            const notifySpy = window.__DEV__ && isSpyEnabled();
             const observable = this.values_.get(key);
             // Value needed for spies/listeners
             let value = undefined;
@@ -380,7 +380,7 @@ export class ObservableObjectAdministration {
                 delete this.target_[key];
             }
             // Allow re-annotating this field
-            if (__DEV__) {
+            if (window.__DEV__) {
                 delete this.appliedAnnotations_[key];
             }
             // Clear observable
@@ -408,11 +408,11 @@ export class ObservableObjectAdministration {
                     oldValue: value,
                     name: key
                 };
-                if (__DEV__ && notifySpy)
+                if (window.__DEV__ && notifySpy)
                     spyReportStart(change);
                 if (notify)
                     notifyListeners(this, change);
-                if (__DEV__ && notifySpy)
+                if (window.__DEV__ && notifySpy)
                     spyReportEnd();
             }
         }
@@ -427,7 +427,7 @@ export class ObservableObjectAdministration {
      * for callback details
      */
     observe_(callback, fireImmediately) {
-        if (__DEV__ && fireImmediately === true)
+        if (window.__DEV__ && fireImmediately === true)
             die("`observe` doesn't support the fire immediately property for observable objects.");
         return registerListener(this, callback);
     }
@@ -437,7 +437,7 @@ export class ObservableObjectAdministration {
     notifyPropertyAddition_(key, value) {
         var _a, _b;
         const notify = hasListeners(this);
-        const notifySpy = __DEV__ && isSpyEnabled();
+        const notifySpy = window.__DEV__ && isSpyEnabled();
         if (notify || notifySpy) {
             const change = notify || notifySpy
                 ? {
@@ -449,11 +449,11 @@ export class ObservableObjectAdministration {
                     newValue: value
                 }
                 : null;
-            if (__DEV__ && notifySpy)
+            if (window.__DEV__ && notifySpy)
                 spyReportStart(change);
             if (notify)
                 notifyListeners(this, change);
-            if (__DEV__ && notifySpy)
+            if (window.__DEV__ && notifySpy)
                 spyReportEnd();
         }
         (_b = (_a = this.pendingKeys_) === null || _a === void 0 ? void 0 : _a.get(key)) === null || _b === void 0 ? void 0 : _b.set(true);
@@ -477,12 +477,12 @@ export class ObservableObjectAdministration {
 }
 export function asObservableObject(target, options) {
     var _a;
-    if (__DEV__ && options && isObservableObject(target)) {
+    if (window.__DEV__ && options && isObservableObject(target)) {
         die(`Options can't be provided for already observable objects.`);
     }
     if (hasProp(target, $mobx))
         return target;
-    if (__DEV__ && !Object.isExtensible(target))
+    if (window.__DEV__ && !Object.isExtensible(target))
         die("Cannot make the designated object observable; it is not extensible");
     const name = (_a = options === null || options === void 0 ? void 0 : options.name) !== null && _a !== void 0 ? _a : `${isPlainObject(target) ? "ObservableObject" : target.constructor.name}@${getNextId()}`;
     const adm = new ObservableObjectAdministration(target, new Map(), stringifyKey(name), getAnnotationFromOptions(options), options === null || options === void 0 ? void 0 : options.autoBind);
@@ -508,7 +508,7 @@ export function isObservableObject(thing) {
     return false;
 }
 export function recordAnnotationApplied(adm, annotation, key) {
-    if (__DEV__) {
+    if (window.__DEV__) {
         adm.appliedAnnotations_[key] = annotation;
     }
     // Remove applied decorator annotation so we don't try to apply it again in subclass constructor
@@ -518,14 +518,14 @@ export function recordAnnotationApplied(adm, annotation, key) {
 }
 function assertAnnotable(adm, annotation, key) {
     // Valid annotation
-    if (__DEV__ && !isAnnotation(annotation)) {
+    if (window.__DEV__ && !isAnnotation(annotation)) {
         die(`Cannot annotate '${adm.name_}.${key.toString()}': Invalid annotation.`);
     }
     /*
     // Configurable, not sealed, not frozen
     // Possibly not needed, just a little better error then the one thrown by engine.
     // Cases where this would be useful the most (subclass field initializer) are not interceptable by this.
-    if (__DEV__) {
+    if (window.__DEV__) {
         const configurable = getDescriptor(adm.target_, key)?.configurable
         const frozen = Object.isFrozen(adm.target_)
         const sealed = Object.isSealed(adm.target_)
@@ -552,7 +552,7 @@ function assertAnnotable(adm, annotation, key) {
     }
     */
     // Not annotated
-    if (__DEV__ && !isOverride(annotation) && hasProp(adm.appliedAnnotations_, key)) {
+    if (window.__DEV__ && !isOverride(annotation) && hasProp(adm.appliedAnnotations_, key)) {
         const fieldName = `${adm.name_}.${key.toString()}`;
         const currentAnnotationType = adm.appliedAnnotations_[key].annotationType_;
         const requestedAnnotationType = annotation.annotationType_;

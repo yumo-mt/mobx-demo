@@ -34,7 +34,7 @@ function createActionFactory(autoAction) {
                 autoAction
             }));
         }
-        if (__DEV__)
+        if (window.__DEV__)
             die("Invalid arguments for `action`");
     };
     return res;

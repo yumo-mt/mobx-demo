@@ -19,7 +19,7 @@ export const computed = function computed(arg1, arg2) {
         return createDecoratorAnnotation(createComputedAnnotation(COMPUTED, arg1));
     }
     // computed(expr, options?)
-    if (__DEV__) {
+    if (window.__DEV__) {
         if (!isFunction(arg1))
             die("First argument to `computed` should be an expression.");
         if (isFunction(arg2))

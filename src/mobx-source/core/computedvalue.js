@@ -131,7 +131,7 @@ export class ComputedValue {
         const wasSuspended = 
         /* see #1208 */ this.dependenciesState_ === IDerivationState_.NOT_TRACKING_;
         const newValue = this.computeValue_(true);
-        if (__DEV__ && isSpyEnabled()) {
+        if (window.__DEV__ && isSpyEnabled()) {
             spyReport({
                 observableKind: "computed",
                 debugObjectName: this.name_,
@@ -204,7 +204,7 @@ export class ComputedValue {
         });
     }
     warnAboutUntrackedRead_() {
-        if (!__DEV__)
+        if (!window.__DEV__)
             return;
         if (this.requiresReaction_ === true) {
             die(`[mobx] Computed value ${this.name_} is read outside a reactive context`);

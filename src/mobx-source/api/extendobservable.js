@@ -1,6 +1,6 @@
 import { isObservableMap, startBatch, endBatch, asObservableObject, isPlainObject, isObservable, die, getOwnPropertyDescriptors, $mobx, ownKeys } from "../internal";
 export function extendObservable(target, properties, annotations, options) {
-    if (__DEV__) {
+    if (window.__DEV__) {
         if (arguments.length > 4)
             die("'extendObservable' expected 2-4 arguments");
         if (typeof target !== "object")

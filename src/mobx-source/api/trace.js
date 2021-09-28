@@ -1,6 +1,6 @@
 import { TraceMode, die, getAtom, globalState } from "../internal";
 export function trace(...args) {
-    if (!__DEV__)
+    if (!window.__DEV__)
         die(`trace() is not available in production builds`);
     let enterBreakPoint = false;
     if (typeof args[args.length - 1] === "boolean")

@@ -56,7 +56,7 @@ export class ObservableSet {
                 this.data_.add(this.enhancer_(value, undefined));
                 this.atom_.reportChanged();
             });
-            const notifySpy = __DEV__ && isSpyEnabled();
+            const notifySpy = window.__DEV__ && isSpyEnabled();
             const notify = hasListeners(this);
             const change = notify || notifySpy
                 ? {
@@ -67,11 +67,11 @@ export class ObservableSet {
                     newValue: value
                 }
                 : null;
-            if (notifySpy && __DEV__)
+            if (notifySpy && window.__DEV__)
                 spyReportStart(change);
             if (notify)
                 notifyListeners(this, change);
-            if (notifySpy && __DEV__)
+            if (notifySpy && window.__DEV__)
                 spyReportEnd();
         }
         return this;
@@ -87,7 +87,7 @@ export class ObservableSet {
                 return false;
         }
         if (this.has(value)) {
-            const notifySpy = __DEV__ && isSpyEnabled();
+            const notifySpy = window.__DEV__ && isSpyEnabled();
             const notify = hasListeners(this);
             const change = notify || notifySpy
                 ? {
@@ -98,7 +98,7 @@ export class ObservableSet {
                     oldValue: value
                 }
                 : null;
-            if (notifySpy && __DEV__)
+            if (notifySpy && window.__DEV__)
                 spyReportStart(change);
             transaction(() => {
                 this.atom_.reportChanged();
@@ -106,7 +106,7 @@ export class ObservableSet {
             });
             if (notify)
                 notifyListeners(this, change);
-            if (notifySpy && __DEV__)
+            if (notifySpy && window.__DEV__)
                 spyReportEnd();
             return true;
         }
@@ -167,7 +167,7 @@ export class ObservableSet {
     }
     observe_(listener, fireImmediately) {
         // ... 'fireImmediately' could also be true?
-        if (__DEV__ && fireImmediately === true)
+        if (window.__DEV__ && fireImmediately === true)
             die("`observe` doesn't support fireImmediately=true in combination with sets.");
         return registerListener(this, listener);
     }

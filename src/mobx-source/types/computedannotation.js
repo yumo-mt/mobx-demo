@@ -37,7 +37,7 @@ function extend_(adm, key, descriptor, proxyTrap) {
     return adm.defineComputedProperty_(key, Object.assign(Object.assign({}, this.options_), { get: descriptor.get, set: descriptor.set }), proxyTrap);
 }
 function assertComputedDescriptor(adm, { annotationType_ }, key, { get }) {
-    if (__DEV__ && !get) {
+    if (window.__DEV__ && !get) {
         die(`Cannot apply '${annotationType_}' to '${adm.name_}.${key.toString()}':` +
             `\n'${annotationType_}' can only be used on getter(+setter) properties.`);
     }

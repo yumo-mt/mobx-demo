@@ -44,7 +44,7 @@ export class Reaction {
                 this.isTrackPending_ = true;
                 try {
                     this.onInvalidate_();
-                    if (__DEV__ && this.isTrackPending_ && isSpyEnabled()) {
+                    if (window.__DEV__ && this.isTrackPending_ && isSpyEnabled()) {
                         // onInvalidate didn't trigger track right away..
                         spyReport({
                             name: this.name_,
@@ -68,7 +68,7 @@ export class Reaction {
         startBatch();
         const notify = isSpyEnabled();
         let startTime;
-        if (__DEV__ && notify) {
+        if (window.__DEV__ && notify) {
             startTime = Date.now();
             spyReportStart({
                 name: this.name_,
@@ -88,7 +88,7 @@ export class Reaction {
         }
         if (isCaughtException(result))
             this.reportExceptionInDerivation_(result.cause);
-        if (__DEV__ && notify) {
+        if (window.__DEV__ && notify) {
             spyReportEnd({
                 time: Date.now() - startTime
             });
@@ -102,16 +102,16 @@ export class Reaction {
         }
         if (globalState.disableErrorBoundaries)
             throw error;
-        const message = __DEV__
+        const message = window.__DEV__
             ? `[mobx] Encountered an uncaught exception that was thrown by a reaction or observer component, in: '${this}'`
             : `[mobx] uncaught error in '${this}'`;
         if (!globalState.suppressReactionErrors) {
             console.error(message, error);
             /** If debugging brought you here, please, read the above message :-). Tnx! */
         }
-        else if (__DEV__)
+        else if (window.__DEV__)
             console.warn(`[mobx] (error in reaction '${this.name_}' suppressed, fix error of causing action below)`); // prettier-ignore
-        if (__DEV__ && isSpyEnabled()) {
+        if (window.__DEV__ && isSpyEnabled()) {
             spyReport({
                 type: "error",
                 name: this.name_,
@@ -174,7 +174,7 @@ function runReactionsHelper() {
     // we converge to no remaining reactions after a while.
     while (allReactions.length > 0) {
         if (++iterations === MAX_REACTION_ITERATIONS) {
-            console.error(__DEV__
+            console.error(window.__DEV__
                 ? `Reaction doesn't converge to a stable state after ${MAX_REACTION_ITERATIONS} iterations.` +
                     ` Probably there is a cycle in the reactive function: ${allReactions[0]}`
                 : `[mobx] cycle in reaction: ${allReactions[0]}`);

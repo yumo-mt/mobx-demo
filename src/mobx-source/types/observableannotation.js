@@ -41,7 +41,7 @@ function extend_(adm, key, descriptor, proxyTrap) {
     return adm.defineObservableProperty_(key, descriptor.value, (_b = (_a = this.options_) === null || _a === void 0 ? void 0 : _a.enhancer) !== null && _b !== void 0 ? _b : deepEnhancer, proxyTrap);
 }
 function assertObservableDescriptor(adm, { annotationType_ }, key, descriptor) {
-    if (__DEV__ && !("value" in descriptor)) {
+    if (window.__DEV__ && !("value" in descriptor)) {
         die(`Cannot apply '${annotationType_}' to '${adm.name_}.${key.toString()}':` +
             `\n'${annotationType_}' cannot be used on getter/setter properties`);
     }

@@ -8,7 +8,7 @@ export class ObservableValue extends Atom {
         this.equals = equals;
         this.hasUnreportedChange_ = false;
         this.value_ = enhancer(value, undefined, name_);
-        if (__DEV__ && notifySpy && isSpyEnabled()) {
+        if (window.__DEV__ && notifySpy && isSpyEnabled()) {
             // only notify spy if this is a stand-alone observable
             spyReport({
                 type: CREATE,
@@ -29,7 +29,7 @@ export class ObservableValue extends Atom {
         newValue = this.prepareNewValue_(newValue);
         if (newValue !== globalState.UNCHANGED) {
             const notifySpy = isSpyEnabled();
-            if (__DEV__ && notifySpy) {
+            if (window.__DEV__ && notifySpy) {
                 spyReportStart({
                     type: UPDATE,
                     object: this,
@@ -40,7 +40,7 @@ export class ObservableValue extends Atom {
                 });
             }
             this.setNewValue_(newValue);
-            if (__DEV__ && notifySpy)
+            if (window.__DEV__ && notifySpy)
                 spyReportEnd();
         }
     }

@@ -53,7 +53,7 @@ function extend_(adm, key, descriptor, proxyTrap) {
     return adm.defineProperty_(key, flowDescriptor, proxyTrap);
 }
 function assertFlowDescriptor(adm, { annotationType_ }, key, { value }) {
-    if (__DEV__ && !isFunction(value)) {
+    if (window.__DEV__ && !isFunction(value)) {
         die(`Cannot apply '${annotationType_}' to '${adm.name_}.${key.toString()}':` +
             `\n'${annotationType_}' can only be used on properties with a generator function value.`);
     }

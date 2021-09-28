@@ -34,7 +34,7 @@ function _when(predicate, effect, opts) {
     return disposer;
 }
 function whenPromise(predicate, opts) {
-    if (__DEV__ && opts && opts.onError)
+    if (window.__DEV__ && opts && opts.onError)
         return die(`the options 'onError' and 'promise' cannot be combined`);
     let cancel;
     const res = new Promise((resolve, reject) => {

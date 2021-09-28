@@ -6,7 +6,7 @@ import { EMPTY_OBJECT, Reaction, action, comparer, getNextId, isAction, isFuncti
  * @returns disposer function, which can be used to stop the view from being updated in the future.
  */
 export function autorun(view, opts = EMPTY_OBJECT) {
-    if (__DEV__) {
+    if (window.__DEV__) {
         if (!isFunction(view))
             die("Autorun expects a function as first argument");
         if (isAction(view))
@@ -51,7 +51,7 @@ function createSchedulerFromOptions(opts) {
             : run;
 }
 export function reaction(expression, effect, opts = EMPTY_OBJECT) {
-    if (__DEV__) {
+    if (window.__DEV__) {
         if (!isFunction(expression) || !isFunction(effect))
             die("First and second argument to reaction should be functions");
         if (!isPlainObject(opts))

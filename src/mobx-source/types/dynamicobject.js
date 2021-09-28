@@ -6,7 +6,7 @@ function getAdm(target) {
 // and skip either the internal values map, or the base object with its property descriptors!
 const objectProxyTraps = {
     has(target, name) {
-        if (__DEV__ && globalState.trackingDerivation)
+        if (window.__DEV__ && globalState.trackingDerivation)
             warnAboutProxyRequirement("detect new properties using the 'in' operator. Use 'has' from 'mobx' instead.");
         return getAdm(target).has_(name);
     },
@@ -17,7 +17,7 @@ const objectProxyTraps = {
         var _a;
         if (!isStringish(name))
             return false;
-        if (__DEV__ && !getAdm(target).values_.has(name)) {
+        if (window.__DEV__ && !getAdm(target).values_.has(name)) {
             warnAboutProxyRequirement("add a new observable property through direct assignment. Use 'set' from 'mobx' instead.");
         }
         // null (intercepted) -> true (success)
@@ -25,7 +25,7 @@ const objectProxyTraps = {
     },
     deleteProperty(target, name) {
         var _a;
-        if (__DEV__) {
+        if (window.__DEV__) {
             warnAboutProxyRequirement("delete properties from an observable object. Use 'remove' from 'mobx' instead.");
         }
         if (!isStringish(name))
@@ -35,14 +35,14 @@ const objectProxyTraps = {
     },
     defineProperty(target, name, descriptor) {
         var _a;
-        if (__DEV__) {
+        if (window.__DEV__) {
             warnAboutProxyRequirement("define property on an observable object. Use 'defineProperty' from 'mobx' instead.");
         }
         // null (intercepted) -> true (success)
         return (_a = getAdm(target).defineProperty_(name, descriptor)) !== null && _a !== void 0 ? _a : true;
     },
     ownKeys(target) {
-        if (__DEV__ && globalState.trackingDerivation)
+        if (window.__DEV__ && globalState.trackingDerivation)
             warnAboutProxyRequirement("iterate keys to detect added / removed properties. Use `keys` from 'mobx' instead.");
         return getAdm(target).ownKeys_();
     },

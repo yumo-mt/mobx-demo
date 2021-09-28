@@ -1,4 +1,4 @@
-import { configure } from '../../mobx-source/mobx';
+import { configure,makeAutoObservable } from '../../mobx-source/mobx';
 
 configure({
   enforceActions: 'always',

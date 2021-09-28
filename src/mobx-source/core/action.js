@@ -13,7 +13,7 @@ const tmpNameDescriptor = {
     enumerable: false
 };
 export function createAction(actionName, fn, autoAction = false, ref) {
-    if (__DEV__) {
+    if (window.__DEV__) {
         if (!isFunction(fn))
             die("`action` can only be invoked on functions");
         if (typeof actionName !== "string" || !actionName)
@@ -44,9 +44,9 @@ export function executeAction(actionName, canRunAsDerivation, fn, scope, args) {
 }
 export function _startAction(actionName, canRunAsDerivation, // true for autoAction
 scope, args) {
-    const notifySpy_ = __DEV__ && isSpyEnabled() && !!actionName;
+    const notifySpy_ = window.__DEV__ && isSpyEnabled() && !!actionName;
     let startTime_ = 0;
-    if (__DEV__ && notifySpy_) {
+    if (window.__DEV__ && notifySpy_) {
         startTime_ = Date.now();
         const flattenedArgs = args ? Array.from(args) : EMPTY_ARRAY;
         spyReportStart({
@@ -91,7 +91,7 @@ export function _endAction(runInfo) {
     endBatch();
     if (runInfo.runAsAction_)
         untrackedEnd(runInfo.prevDerivation_);
-    if (__DEV__ && runInfo.notifySpy_) {
+    if (window.__DEV__ && runInfo.notifySpy_) {
         spyReportEnd({ time: Date.now() - runInfo.startTime_ });
     }
     globalState.suppressReactionErrors = false;

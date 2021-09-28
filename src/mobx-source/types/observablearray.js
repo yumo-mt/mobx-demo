@@ -131,7 +131,7 @@ export class ObservableArrayAdministration {
         }
         newItems =
             newItems.length === 0 ? newItems : newItems.map(v => this.enhancer_(v, undefined));
-        if (this.legacyMode_ || __DEV__) {
+        if (this.legacyMode_ || window.__DEV__) {
             const lengthDelta = newItems.length - deleteCount;
             this.updateArrayLength_(length, lengthDelta); // checks if internal array wasn't modified
         }
@@ -171,12 +171,12 @@ export class ObservableArrayAdministration {
             : null;
         // The reason why this is on right hand side here (and not above), is this way the uglifier will drop it, but it won't
         // cause any runtime overhead in development mode without NODE_ENV set, unless spying is enabled
-        if (__DEV__ && notifySpy)
+        if (window.__DEV__ && notifySpy)
             spyReportStart(change);
         this.atom_.reportChanged();
         if (notify)
             notifyListeners(this, change);
-        if (__DEV__ && notifySpy)
+        if (window.__DEV__ && notifySpy)
             spyReportEnd();
     }
     notifyArraySplice_(index, added, removed) {
@@ -195,13 +195,13 @@ export class ObservableArrayAdministration {
                 addedCount: added.length
             }
             : null;
-        if (__DEV__ && notifySpy)
+        if (window.__DEV__ && notifySpy)
             spyReportStart(change);
         this.atom_.reportChanged();
         // conform: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/observe
         if (notify)
             notifyListeners(this, change);
-        if (__DEV__ && notifySpy)
+        if (window.__DEV__ && notifySpy)
             spyReportEnd();
     }
     get_(index) {
@@ -209,7 +209,7 @@ export class ObservableArrayAdministration {
             this.atom_.reportObserved();
             return this.dehanceValue_(this.values_[index]);
         }
-        console.warn(__DEV__
+        console.warn(window.__DEV__
             ? `[mobx] Out of bounds read: ${index}`
             : `[mobx.array] Attempt to read an array index (${index}) that is out of bounds (${this.values_.length}). Please check length first. Out of bound indices will not be tracked by MobX`);
     }
