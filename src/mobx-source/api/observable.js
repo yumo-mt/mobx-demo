@@ -12,6 +12,7 @@ function assertValidOption(key) {
     if (!/^(deep|name|equals|defaultDecorator|proxy)$/.test(key))
         fail(`invalid option for (extend)observable: ${key}`);
 }
+// 校验一下参数
 export function asCreateObservableOptions(thing) {
     if (thing === null || thing === undefined)
         return defaultCreateObservableOptions;

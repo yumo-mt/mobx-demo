@@ -12,7 +12,6 @@ export function createDecoratorForEnhancer(enhancer) {
             : undefined;
         asObservableObject(target).addObservableProp(propertyName, initialValue, enhancer);
     });
-    debugger
     const res = 
     // Extra process checks, as this happens during module initialization
     typeof process !== "undefined" && process.env && process.env.NODE_ENV !== "production"

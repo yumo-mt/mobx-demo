@@ -21,8 +21,6 @@ const objectProxyTraps = {
         return name in target;
     },
     get(target, name) {
-        debugger
-
         if (name === $mobx || name === "constructor" || name === mobxDidRunLazyInitializersSymbol)
             return target[name];
         const adm = getAdm(target);

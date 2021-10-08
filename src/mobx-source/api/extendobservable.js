@@ -1,7 +1,7 @@
 import { asCreateObservableOptions, asObservableObject, computedDecorator, deepDecorator, endBatch, fail, getPlainObjectKeys, invariant, isComputed, isObservable, isObservableMap, refDecorator, startBatch, stringifyKey, initializeInstance } from "../internal";
 import { isPlainObject } from "../utils/utils";
 export function extendObservable(target, properties, decorators, options) {
-    console.log(arguments)
+    // console.log(arguments)
     if (process.env.NODE_ENV !== "production") {
         invariant(arguments.length >= 2 && arguments.length <= 4, "'extendObservable' expected 2-4 arguments");
         invariant(typeof target === "object", "'extendObservable' expects an object as first argument");

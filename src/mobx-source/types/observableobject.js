@@ -81,7 +81,6 @@ export class ObservableObjectAdministration {
                 return;
             newValue = change.newValue;
         }
-        debugger;
         const observable = new ObservableValue(newValue, enhancer, `${this.name}.${stringifyKey(propName)}`, false);
         this.values.set(propName, observable);
         newValue = observable.value; // observableValue might have changed it
