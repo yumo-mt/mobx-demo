@@ -48,7 +48,11 @@ export function getEnhancerFromAnnotation(annotation) {
 }
 /**
  * Turns an object, array or function into a reactive structure.
+ * 将对象、数组或函数转换为反应式结构。本身不提供转换功能
  * @param v the value which should become observable.
+ * 
+ * 策略设计模式：将多种数据类型（Object、Array、Map）情况的转换封装起来，好让调用者不需要关心实现细节
+ * 
  */
 function createObservable(v, arg2, arg3) {
     // @observable someProp;
