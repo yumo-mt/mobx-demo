@@ -4,11 +4,7 @@ export const inferredAnnotationsSymbol = Symbol("mobx-inferred-annotations");
 const descriptorCache = Object.create(null);
 const REMOVE = "remove";
 export class ObservableObjectAdministration {
-    constructor(target_, values_ = new Map(), name_, 
-    // Used anytime annotation is not explicitely provided
-    defaultAnnotation_ = observable, 
-    // Bind automatically inferred actions?
-    autoBind_ = false) {
+    constructor(target_, values_ = new Map(), name_, defaultAnnotation_ = observable, autoBind_ = false) {
         this.target_ = target_;
         this.values_ = values_;
         this.name_ = name_;
