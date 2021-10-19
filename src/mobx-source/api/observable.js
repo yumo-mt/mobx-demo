@@ -89,17 +89,29 @@ function createObservable(v, arg2, arg3) {
     return;
   }
   // already observable - ignore
-  if (isObservable(v)) return v;
+  if (isObservable(v)) {
+    return v;
+  }
   // plain object
-  if (isPlainObject(v)) return observable.object(v, arg2, arg3);
+  if (isPlainObject(v)) {
+    return observable.object(v, arg2, arg3);
+  }
   // Array
-  if (Array.isArray(v)) return observable.array(v, arg2);
+  if (Array.isArray(v)) {
+    return observable.array(v, arg2);
+  }
   // Map
-  if (isES6Map(v)) return observable.map(v, arg2);
+  if (isES6Map(v)) {
+    return observable.map(v, arg2);
+  }
   // Set
-  if (isES6Set(v)) return observable.set(v, arg2);
+  if (isES6Set(v)) {
+    return observable.set(v, arg2);
+  }
   // other object - ignore
-  if (typeof v === 'object' && v !== null) return v;
+  if (typeof v === 'object' && v !== null) {
+    return v;
+  }
   // anything else
   return observable.box(v);
 }
@@ -130,10 +142,11 @@ const observableFactories = {
       globalState.useProxies === false ||
       (options === null || options === void 0 ? void 0 : options.proxy)
     ) {
-        const p = asObservableObject({}, options)
+      const p = asObservableObject({}, options);
       return extendObservable(p, props, decorators);
     } else {
-        const p = asObservableObject({}, options)
+      const p = asObservableObject({}, options);
+      console.log(p);
       return extendObservable(p, props, decorators);
     }
   },

@@ -15,12 +15,14 @@ export function extendObservable(target, properties, annotations, options) {
     // Pull descriptors first, so we don't have to deal with props added by administration ($mobx)
     const descriptors = getOwnPropertyDescriptors(properties);
     const adm = asObservableObject(target, options)[$mobx];
+    console.log(adm)
     startBatch();
     try {
-        ownKeys(descriptors).forEach(key => {
-            adm.extend_(key, descriptors[key], 
+        const keys = ownKeys(descriptors)
+        keys.forEach(key => {
             // must pass "undefined" for { key: undefined }
-            !annotations ? true : key in annotations ? annotations[key] : true);
+            const val = !annotations ? true : key in annotations ? annotations[key] : true
+            adm.extend_(key, descriptors[key], val);
         });
     }
     finally {

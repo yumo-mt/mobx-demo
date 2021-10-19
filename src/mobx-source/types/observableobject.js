@@ -476,12 +476,14 @@ export function asObservableObject(target, options) {
     if (window.__DEV__ && options && isObservableObject(target)) {
         die(`Options can't be provided for already observable objects.`);
     }
-    if (hasProp(target, $mobx))
+    if (hasProp(target, $mobx)){
         return target;
+    }
     if (window.__DEV__ && !Object.isExtensible(target))
         die("Cannot make the designated object observable; it is not extensible");
     const name = (_a = options === null || options === void 0 ? void 0 : options.name) !== null && _a !== void 0 ? _a : `${isPlainObject(target) ? "ObservableObject" : target.constructor.name}@${getNextId()}`;
-    const adm = new ObservableObjectAdministration(target, new Map(), stringifyKey(name), getAnnotationFromOptions(options), options === null || options === void 0 ? void 0 : options.autoBind);
+    const opt = getAnnotationFromOptions(options)
+    const adm = new ObservableObjectAdministration(target, new Map(), stringifyKey(name), opt, options === null || options === void 0 ? void 0 : options.autoBind);
     addHiddenProp(target, $mobx, adm);
     return target;
 }
