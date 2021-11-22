@@ -1,0 +1,10 @@
+diff --git a/node_modules/mobx-react/dist/mobxreact.esm.js b/node_modules/mobx-react/dist/mobxreact.esm.js
+index 76601b9..3449369 100644
+--- a/node_modules/mobx-react/dist/mobxreact.esm.js
++++ b/node_modules/mobx-react/dist/mobxreact.esm.js
+@@ -1,4 +1,4 @@
+-import { Reaction, _allowStateChanges, _allowStateReadsStart, _allowStateReadsEnd, $mobx, createAtom, untracked, isObservableMap, isObservableObject, isObservableArray, observable, configure } from 'mobx';
++import { Reaction, _allowStateChanges, _allowStateReadsStart, _allowStateReadsEnd, $mobx, createAtom, untracked, isObservableMap, isObservableObject, isObservableArray, observable, configure } from '../../../src/mobx-source/mobx';
+ import React__default, { PureComponent, Component, forwardRef, memo, createElement } from 'react';
+ import { unstable_batchedUpdates } from 'react-dom';
+ import { isUsingStaticRendering, Observer, observer as observer$1 } from 'mobx-react-lite';

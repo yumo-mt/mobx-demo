@@ -7,6 +7,7 @@
         "build": "webpack --config ./webpack.prod.js  --mode production",
         "start": "webpack-dev-server --open --config ./webpack.dev.js  --mode development",
         "dll": "webpack --config ./webpack.dll.config.js",
+        "postinstall": "patch-package",
         "build:view": "BUILD_TYPE=view  npm run build"
     },
     "keywords": [],
@@ -67,6 +68,7 @@
     },
     "devDependencies": {
         "comment-require-loader": "^1.0.0",
+        "patch-package": "^6.4.7",
         "webpack-bundle-analyzer": "^3.0.2",
         "webpack-dev-server": "^3.1.7"
     }

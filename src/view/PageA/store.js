@@ -3,6 +3,7 @@ import { configure,makeAutoObservable,observable } from '../../mobx-source/mobx'
 // configure({
 //   enforceActions: 'always',
 // })
+// configure({isolateGlobalState: true })
 // class Store{
 //   constructor() {
 //     // !!! 必写的
@@ -20,7 +21,6 @@ var parent = {
   },
   job: '钢铁侠'
 }
-debugger
 var bankUser = observable(parent);
 
 export default bankUser;
